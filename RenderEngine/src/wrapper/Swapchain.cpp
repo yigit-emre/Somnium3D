@@ -30,7 +30,7 @@ struct SwapChainSupportDetails
 	inline bool GetSwapChainDetails() const { return !(formats.empty() || presentModes.empty()); };
 };
 
-Swapchain::Swapchain(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode)
+SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode)
 {
 	SwapChainSupportDetails details(RenderPlatform::platform->physicalDevice, RenderPlatform::platform->surface);
 
@@ -123,7 +123,7 @@ Swapchain::Swapchain(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentM
 	}
 }
 
-Swapchain::~Swapchain()
+SwapchainObject::~SwapchainObject()
 {
 	if (images)
 		delete[] images;
@@ -137,7 +137,7 @@ Swapchain::~Swapchain()
 	vkDestroySwapchainKHR(RenderPlatform::platform->device, swapchain, nullptr);
 }
 
-Swapchain::Swapchain(Swapchain&& move) noexcept : swapchain(move.swapchain), images(move.images), imageViews(move.imageViews),
+SwapchainObject::SwapchainObject(SwapchainObject&& move) noexcept : swapchain(move.swapchain), images(move.images), imageViews(move.imageViews),
 imageCount(move.imageCount), swapchainFormat(move.swapchainFormat), swapchainExtent(move.swapchainExtent)
 {
 	move.images = nullptr;

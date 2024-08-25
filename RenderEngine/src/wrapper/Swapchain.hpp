@@ -1,7 +1,7 @@
 #pragma once
 #include "vulkan/vulkan.h"
 
-class Swapchain
+class SwapchainObject
 {
 public:
 	VkImage* images;
@@ -12,8 +12,8 @@ public:
 	VkFormat swapchainFormat;
 	VkExtent2D swapchainExtent;
 
-	~Swapchain();
-	Swapchain(Swapchain&& move) noexcept;
-	Swapchain(const Swapchain& copy) = delete;
-	Swapchain(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode);
+	~SwapchainObject();
+	SwapchainObject(SwapchainObject&& move) noexcept;
+	SwapchainObject(const SwapchainObject& copy) = delete;
+	SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode);
 };
