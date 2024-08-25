@@ -153,12 +153,18 @@
   <ItemGroup>
     <ClInclude Include="includeEXT\core.hpp" />
     <ClInclude Include="includeEXT\engine.hpp" />
+    <ClInclude Include="src\gui\guiRenderer.h" />
     <ClInclude Include="src\RenderPlatform.hpp" />
+    <ClInclude Include="src\wrapper\Memory.hpp" />
+    <ClInclude Include="src\wrapper\Swapchain.hpp" />
     <ClInclude Include="vendor\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\engine.cpp" />
+    <ClCompile Include="src\gui\guiRenderer.cpp" />
     <ClCompile Include="src\RenderPlatform.cpp" />
+    <ClCompile Include="src\wrapper\Memory.cpp" />
+    <ClCompile Include="src\wrapper\Swapchain.cpp" />
     <ClCompile Include="vendor\implement.cpp" />
   </ItemGroup>
   <ItemGroup>

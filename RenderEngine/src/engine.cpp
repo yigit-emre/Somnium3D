@@ -1,9 +1,11 @@
 #define S3D_RENDER_ENGINE_EXPORT
 #include "engine.hpp"
 #include "RenderPlatform.hpp"
+#include "wrapper/Memory.hpp"
 #include <stdexcept>
 
 const RenderPlatform* RenderPlatform::platform = nullptr;
+MemoryManager* MemoryManager::manager = nullptr;
 
 void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
 {
@@ -15,9 +17,11 @@ void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
 	platformInfo.features.samplerAnisotropy = VK_TRUE;
 
 	RenderPlatform::platform = new RenderPlatform(platformInfo, true);
+	MemoryManager::manager = new MemoryManager();
 }
 
 void s3DTerminateRenderEngine()
 {
+	delete MemoryManager::manager;
 	delete RenderPlatform::platform;
 }
