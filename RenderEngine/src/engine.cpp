@@ -7,7 +7,7 @@
 const RenderPlatform* RenderPlatform::platform = nullptr;
 MemoryManager* MemoryManager::manager = nullptr;
 
-void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
+S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
 {
 	const char* extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -20,7 +20,7 @@ void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
 	MemoryManager::manager = new MemoryManager();
 }
 
-void s3DTerminateRenderEngine()
+S3D_API void s3DTerminateRenderEngine()
 {
 	delete MemoryManager::manager;
 	delete RenderPlatform::platform;

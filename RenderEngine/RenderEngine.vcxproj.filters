@@ -27,7 +27,7 @@
     <ClInclude Include="src\RenderPlatform.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\guiRenderer.h">
+    <ClInclude Include="src\gui\guiRenderer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\wrapper\Memory.hpp">
@@ -36,7 +36,10 @@
     <ClInclude Include="src\wrapper\Swapchain.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\wrapper\RendererObject.hpp">
+    <ClInclude Include="src\FileIO.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\wrapper\PipelineObject.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -59,11 +62,17 @@
     <ClCompile Include="src\wrapper\Swapchain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\wrapper\RendererObject.cpp">
+    <ClCompile Include="src\FileIO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\wrapper\PipelineObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="shaders\SpirVCompiler.bat">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
