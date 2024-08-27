@@ -2,8 +2,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
 
-struct AppWindowCreateInfo;
+#define DEVICE RenderPlatform::platform->device
 
+struct AppWindowCreateInfo;
 struct RenderPlatformInfo
 {
 	uint32_t windowWidth{ 1200 };

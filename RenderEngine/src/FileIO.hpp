@@ -1,7 +1,10 @@
 #pragma once
-#include <vector>
+#include <vulkan/vulkan.h>
 
 namespace ShaderLoader
 {
-	std::vector<char> SpirVLoader(const char* filepath);
+	VkShaderModule SpirVLoader(const char* filepath);
+	void DestroyShaderModule(VkShaderModule& shaderModule);
+
+	//TODO: Add pipeline cache
 }

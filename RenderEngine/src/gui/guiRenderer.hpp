@@ -8,18 +8,24 @@ class GUIRenderer
 public:
 	GUIRenderer();
 	~GUIRenderer();
-	GUIRenderer(GUIRenderer&& move) noexcept;
 	GUIRenderer(const GUIRenderer& copy) = delete;
+	GUIRenderer(GUIRenderer&& move) noexcept = delete;
 
 
 	void Render();
 private:
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
 	VkRenderPass renderPass;
-
-
 
 	SwapchainObject swapchainObject;
 
+	VkDescriptorPool descriptorPool;
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSet descriptorSets[FRAMES_IN_FLIGHT];
+
+	void CreateDescriptors();
 	void BuildGraphicsPipeline();
+	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
 };
 

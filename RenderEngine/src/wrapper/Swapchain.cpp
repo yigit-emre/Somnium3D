@@ -88,12 +88,12 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	swapchainInfo.clipped = VK_TRUE;
 	swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(RenderPlatform::platform->device, &swapchainInfo, nullptr, &swapchain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR(DEVICE, &swapchainInfo, nullptr, &swapchain) != VK_SUCCESS)
 		throw std::runtime_error("Failed to craet swapchain!");
 
-	vkGetSwapchainImagesKHR(RenderPlatform::platform->device, swapchain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(DEVICE, swapchain, &imageCount, nullptr);
 	images = new VkImage[imageCount];
-	vkGetSwapchainImagesKHR(RenderPlatform::platform->device, swapchain, &imageCount, images);
+	vkGetSwapchainImagesKHR(DEVICE, swapchain, &imageCount, images);
 
 	swapchainFormat = details.formats[surfaceFormatIndex].format;
 	swapchainExtent = details.capabilities.currentExtent;
@@ -118,7 +118,7 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	for (uint32_t i = 0; i < imageCount; i++)
 	{
 		viewInfo.image = images[i];
-		if (vkCreateImageView(RenderPlatform::platform->device, &viewInfo, nullptr, &imageViews[i]) != VK_SUCCESS)
+		if (vkCreateImageView(DEVICE, &viewInfo, nullptr, &imageViews[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create swapchain imageViews!");
 	}
 }
@@ -131,10 +131,10 @@ SwapchainObject::~SwapchainObject()
 	if (imageViews)
 	{
 		for (uint32_t i = 0; i < imageCount; i++)
-			vkDestroyImageView(RenderPlatform::platform->device, imageViews[i], nullptr);
+			vkDestroyImageView(DEVICE, imageViews[i], nullptr);
 		delete[] imageViews;
 	}
-	vkDestroySwapchainKHR(RenderPlatform::platform->device, swapchain, nullptr);
+	vkDestroySwapchainKHR(DEVICE, swapchain, nullptr);
 }
 
 SwapchainObject::SwapchainObject(SwapchainObject&& move) noexcept : swapchain(move.swapchain), images(move.images), imageViews(move.imageViews),

@@ -70,9 +70,9 @@ void MemoryAllocater::freeSubMemory(const MemoryInfo& memoryPlace)
 
 MemoryObject::~MemoryObject()
 {
-	vkDestroyImage(RenderPlatform::platform->device, image, nullptr);
-	vkDestroyBuffer(RenderPlatform::platform->device, buffer, nullptr);
-	vkDestroyImageView(RenderPlatform::platform->device, imageView, nullptr);
+	vkDestroyImage(DEVICE, image, nullptr);
+	vkDestroyBuffer(DEVICE, buffer, nullptr);
+	vkDestroyImageView(DEVICE, imageView, nullptr);
 }
 
 MemoryObject::MemoryObject(MemoryObject&& move) noexcept : buffer(move.buffer), image(move.image), imageView(move.imageView),
@@ -87,18 +87,18 @@ MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* im
 {
 	if (bufferInfo)
 	{
-		if (vkCreateBuffer(RenderPlatform::platform->device, bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+		if (vkCreateBuffer(DEVICE, bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create buffer!");
-		vkGetBufferMemoryRequirements(RenderPlatform::platform->device, buffer, &memoryRequirements);
+		vkGetBufferMemoryRequirements(DEVICE, buffer, &memoryRequirements);
 	}
 	else
 	{
-		if (vkCreateImage(RenderPlatform::platform->device, imageInfo, nullptr, &image) != VK_SUCCESS)
+		if (vkCreateImage(DEVICE, imageInfo, nullptr, &image) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create image!");
-		vkGetImageMemoryRequirements(RenderPlatform::platform->device, image, &memoryRequirements);
+		vkGetImageMemoryRequirements(DEVICE, image, &memoryRequirements);
 
 		viewInfo->image = image;
-		if (vkCreateImageView(RenderPlatform::platform->device, viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		if (vkCreateImageView(DEVICE, viewInfo, nullptr, &imageView) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create imaged view!");
 	}
 }
@@ -108,7 +108,7 @@ MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* im
 
 PhysicalMemory::~PhysicalMemory()
 {
-	vkFreeMemory(RenderPlatform::platform->device, memory, nullptr);
+	vkFreeMemory(DEVICE, memory, nullptr);
 }
 
 PhysicalMemory::PhysicalMemory(PhysicalMemory&& move) noexcept : memory(move.memory), memoryAllocater(std::move(move.memoryAllocater)), totalMemorySize(move.totalMemorySize), memoryTypeBit(move.memoryTypeBit)
@@ -130,7 +130,7 @@ PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : 
 		if ((memProperties.memoryTypes[i].propertyFlags & typeFlag) == typeFlag)
 		{
 			allocInfo.memoryTypeIndex = i;
-			if (vkAllocateMemory(RenderPlatform::platform->device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+			if (vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory) != VK_SUCCESS)
 				throw std::runtime_error("Failed to allocate physical memory!");
 			memoryTypeBit = 1 << i;
 			return;
@@ -145,13 +145,13 @@ PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : 
 void MemoryManager::UnMapPhysicalMemory(std::string physicalKeyName)
 {
 	if (physicalMemories.find(physicalKeyName) != physicalMemories.end())
-		vkUnmapMemory(RenderPlatform::platform->device, physicalMemories[physicalKeyName].memory);
+		vkUnmapMemory(DEVICE, physicalMemories[physicalKeyName].memory);
 }
 
 VkResult MemoryManager::MapPhysicalMemory(std::string physicalKeyName, void** pMemoryAccess)
 {
 	if (physicalMemories.find(physicalKeyName) != physicalMemories.end())
-		return vkMapMemory(RenderPlatform::platform->device, physicalMemories[physicalKeyName].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
+		return vkMapMemory(DEVICE, physicalMemories[physicalKeyName].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
 	return VK_ERROR_MEMORY_MAP_FAILED;
 }
 
@@ -176,9 +176,9 @@ VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::strin
 		{
 			object.memoryPlace = memory.memoryAllocater.allocSubMemory((uint32_t)object.memoryRequirements.size, (uint32_t)object.memoryRequirements.alignment, memory.totalMemorySize);
 			if (object.buffer)
-				return vkBindBufferMemory(RenderPlatform::platform->device, object.buffer, memory.memory, object.memoryPlace.startOffset);
+				return vkBindBufferMemory(DEVICE, object.buffer, memory.memory, object.memoryPlace.startOffset);
 			else
-				return vkBindImageMemory(RenderPlatform::platform->device, object.image, memory.memory, object.memoryPlace.startOffset);
+				return vkBindImageMemory(DEVICE, object.image, memory.memory, object.memoryPlace.startOffset);
 		}
 		else
 			throw std::runtime_error("Memory type bit does not match!");

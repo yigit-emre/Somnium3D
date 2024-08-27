@@ -39,9 +39,6 @@
     <ClInclude Include="src\FileIO.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\wrapper\PipelineObject.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="vendor\implement.cpp">
@@ -65,14 +62,13 @@
     <ClCompile Include="src\FileIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\wrapper\PipelineObject.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="shaders\SpirVCompiler.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="shaders\gui.frag" />
+    <None Include="shaders\gui.vert" />
   </ItemGroup>
 </Project>

@@ -157,7 +157,6 @@
     <ClInclude Include="src\FileIO.hpp" />
     <ClInclude Include="src\RenderPlatform.hpp" />
     <ClInclude Include="src\wrapper\Memory.hpp" />
-    <ClInclude Include="src\wrapper\PipelineObject.hpp" />
     <ClInclude Include="src\wrapper\Swapchain.hpp" />
     <ClInclude Include="vendor\stb_image.h" />
   </ItemGroup>
@@ -167,12 +166,13 @@
     <ClCompile Include="src\FileIO.cpp" />
     <ClCompile Include="src\RenderPlatform.cpp" />
     <ClCompile Include="src\wrapper\Memory.cpp" />
-    <ClCompile Include="src\wrapper\PipelineObject.cpp" />
     <ClCompile Include="src\wrapper\Swapchain.cpp" />
     <ClCompile Include="vendor\implement.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="shaders\gui.frag" />
+    <None Include="shaders\gui.vert" />
     <None Include="shaders\SpirVCompiler.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
