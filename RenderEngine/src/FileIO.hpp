@@ -3,7 +3,7 @@
 
 namespace ShaderLoader
 {
-	VkShaderModule SpirVLoader(const char* filepath);
+	_NODISCARD VkShaderModule SpirVLoader(const char* filepath);
 	void DestroyShaderModule(VkShaderModule& shaderModule);
 
 	//TODO: Add pipeline cache

@@ -1,7 +1,7 @@
 #pragma once
 #define IN_DLL
 #include "core.hpp"
-#include "..\wrapper\Swapchain.hpp"
+#include "..\wrapper\SwapchainObject.hpp"
 
 class GUIRenderer
 {
@@ -24,6 +24,7 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet descriptorSets[FRAMES_IN_FLIGHT];
 
+	//TODO: dynamic descriptors
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
 	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;

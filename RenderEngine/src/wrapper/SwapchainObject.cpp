@@ -1,4 +1,4 @@
-#include "Swapchain.hpp"
+#include "SwapchainObject.hpp"
 #include "..\RenderPlatform.hpp"
 #include "Memory.hpp"
 #include <stdexcept>
