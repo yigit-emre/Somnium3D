@@ -114,7 +114,7 @@ bool RenderPlatform::IsDeviceSuitable(VkPhysicalDevice& physDevice, const Render
 	{
 		if ((availableFamilies[index].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) {
 			graphicSupport = true;
-			graphicQueueFamilyIndex = index;
+			graphicsQueueFamilyIndex = index;
 		}
 
 		vkGetPhysicalDeviceSurfaceSupportKHR(physDevice, index, surface, &presentSupport);
@@ -203,8 +203,8 @@ void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlat
 
 void RenderPlatform::CreateLogicalDevice(const RenderPlatformInfo& info)
 {
-	uint32_t queueFamilyIndices[2] = { graphicQueueFamilyIndex, presentQueueFamilyIndex };
-	uint32_t uniqueQueueFamilyCount = (graphicQueueFamilyIndex == presentQueueFamilyIndex) ? 1 : 2;
+	uint32_t queueFamilyIndices[2] = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
+	uint32_t uniqueQueueFamilyCount = (graphicsQueueFamilyIndex == presentQueueFamilyIndex) ? 1 : 2;
 
 	float queuePriority = 1.0f;
 	std::vector<VkDeviceQueueCreateInfo> queueInfos(uniqueQueueFamilyCount);
@@ -237,6 +237,6 @@ void RenderPlatform::CreateLogicalDevice(const RenderPlatformInfo& info)
 	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create logical device!");
 
-	vkGetDeviceQueue(device, graphicQueueFamilyIndex, 0, &graphicQueue);
+	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
 	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue);
 }

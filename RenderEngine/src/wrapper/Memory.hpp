@@ -3,10 +3,9 @@
 #include <string>
 #include <unordered_map>
 
-#define S3D_SIZE_Kib 128U
-#define S3D_SIZE_KiB 1024U
-#define S3D_SIZE_MiB 1048576U
-#define S3D_SIZE_GiB 1073741824U
+#define S3D_SIZE_KB 1000U
+#define S3D_SIZE_MB 1000000U
+#define S3D_SIZE_GB 1000000000U
 
 struct AppWindowCreateInfo;
 
@@ -76,7 +75,7 @@ public:
 	inline void deletePhysicalMemory(std::string keyName) { physicalMemories.erase(keyName); }
 	inline void createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, std::string keyName) { physicalMemories.emplace(keyName, PhysicalMemory(typeFlag, size)); }
 	inline void createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, VkImageViewCreateInfo* viewInfo, std::string keyName) { memoryObjects.emplace(keyName, MemoryObject(bufferInfo, imageInfo, viewInfo)); }
-	inline const MemoryObject& getMemoryObject(std::string keyName) { return memoryObjects[keyName]; }
+	_NODISCARD inline const MemoryObject& getMemoryObject(std::string keyName) { return memoryObjects[keyName]; }
 
 	void UnMapPhysicalMemory(std::string physicalKeyName);
 	VkResult MapPhysicalMemory(std::string physicalKeyName, void** pMemoryAccess);
@@ -88,6 +87,7 @@ public:
 	void freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo);
 
 	static MemoryManager* manager;
+	static void* mappedStagingMemory;
 private:
 	MemoryManager() = default;
 	~MemoryManager() = default;

@@ -26,11 +26,11 @@ public:
 	VkInstance instance;
 	VkSurfaceKHR surface;
 
-	VkQueue graphicQueue;
 	VkQueue presentQueue;
+	VkQueue graphicsQueue;
 
-	uint32_t graphicQueueFamilyIndex;
 	uint32_t presentQueueFamilyIndex;
+	uint32_t graphicsQueueFamilyIndex;
 
 	VkDevice device;
 	VkPhysicalDevice physicalDevice;

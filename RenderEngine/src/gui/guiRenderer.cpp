@@ -1,17 +1,33 @@
 #include "guiRenderer.hpp"
 #include "..\wrapper\Memory.hpp"
 #include "..\RenderPlatform.hpp"
+#include "..\wrapper\CommandBufferObject.hpp"
+#include "stb_image.h"
 #include "..\FileIO.hpp"
 #include <stdexcept>
 
 GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR)
 {
+	SingleTimeCommandsInfo stCommandsInfo{};
 	CreateDescriptors();
 	BuildGraphicsPipeline();
+	CreateFontBitmapTexture(stCommandsInfo);
+
+	//Creating sync objects
+	VkFenceCreateInfo fenceCreateInfo{};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+	if(vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &singleTimeFence) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create single time fence!");
+
+	SingleTimeCommands(stCommandsInfo);
 }
 
 GUIRenderer::~GUIRenderer()
 {
+	vkDestroyFence(DEVICE, singleTimeFence, nullptr);
+	vkDestroySampler(DEVICE, textureSampler, nullptr);
+
 	vkDestroyPipeline(DEVICE, pipeline, nullptr);
 	vkDestroyPipelineLayout(DEVICE, pipelineLayout, nullptr);
 	vkDestroyRenderPass(DEVICE, renderPass, nullptr);
@@ -218,4 +234,106 @@ void GUIRenderer::FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCrea
 	pipelineCreateInfo.pRasterizationState = &rasterizationInfo;
 	pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
 	pipelineCreateInfo.pColorBlendState = &colorBlendInfo;
+}
+
+void GUIRenderer::CreateFontBitmapTexture(SingleTimeCommandsInfo& stCommandsInfo)
+{
+	int width, height, channel;
+	stbi_uc* pixels = stbi_load("resouces\\fontBitmap.png", &width, &height, &channel, 1);
+
+	if (!pixels)
+		throw std::runtime_error("Failed to load fontBitmap texture!");
+
+	memcpy(MemoryManager::mappedStagingMemory, pixels, width * height * channel);
+	stbi_image_free(pixels);
+
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	imageInfo.extent = { (uint32_t)width, (uint32_t)height,  1U };
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	MemoryManager::manager->createMemoryObject(nullptr, &imageInfo, &viewInfo, "fontBitmapTexture");
+	if(MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory") != VK_SUCCESS)
+		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
+
+	stCommandsInfo.imageExtent = imageInfo.extent;
+
+
+}
+
+void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInfo)
+{
+	VkCommandBuffer commandBuffer;
+	graphicsFamilyCommandPoolST->allocCommandBuffers(true, 1, &commandBuffer);
+
+	/************* CMD Preparations *************/
+	auto imageLayoutTransition = [&](VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+		{
+			VkImageMemoryBarrier barrier{};
+			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			barrier.srcAccessMask = 0; // TODO
+			barrier.dstAccessMask = 0; // TODO
+			barrier.oldLayout = oldLayout;
+			barrier.newLayout = newLayout;
+			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.image = image;
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			barrier.subresourceRange.baseMipLevel = 0;
+			barrier.subresourceRange.levelCount = 1;
+			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.layerCount = 1;
+
+			vkCmdPipelineBarrier(commandBuffer, 0 /* TODO */, 0 /* TODO */, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+		};
+	
+	/************* Queue Submission Preparations *************/
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	/************* Font Image Operations *************/ 
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = stCommandsInfo.imageExtent;
+	
+
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(RenderPlatform::platform->graphicsQueue, 1, &submitInfo, singleTimeFence);
+	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(DEVICE, 1, &singleTimeFence);
+	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
 }

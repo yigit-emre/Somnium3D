@@ -72,11 +72,11 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	swapchainInfo.imageArrayLayers = 1;
 	swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	if (RenderPlatform::platform->graphicQueueFamilyIndex == RenderPlatform::platform->presentQueueFamilyIndex)
+	if (RenderPlatform::platform->graphicsQueueFamilyIndex == RenderPlatform::platform->presentQueueFamilyIndex)
 		swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	else
 	{
-		uint32_t queueFamilIndices[2] = { RenderPlatform::platform->graphicQueueFamilyIndex, RenderPlatform::platform->presentQueueFamilyIndex };
+		uint32_t queueFamilIndices[2] = { RenderPlatform::platform->graphicsQueueFamilyIndex, RenderPlatform::platform->presentQueueFamilyIndex };
 
 		swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapchainInfo.queueFamilyIndexCount = 2;

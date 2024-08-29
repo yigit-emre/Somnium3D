@@ -157,6 +157,7 @@
     <ClInclude Include="src\FileIO.hpp" />
     <ClInclude Include="src\gui\widget.hpp" />
     <ClInclude Include="src\RenderPlatform.hpp" />
+    <ClInclude Include="src\wrapper\CommandBufferObject.hpp" />
     <ClInclude Include="src\wrapper\DescriptorObject.hpp" />
     <ClInclude Include="src\wrapper\Memory.hpp" />
     <ClInclude Include="src\wrapper\SwapchainObject.hpp" />
@@ -168,6 +169,7 @@
     <ClCompile Include="src\FileIO.cpp" />
     <ClCompile Include="src\gui\widget.cpp" />
     <ClCompile Include="src\RenderPlatform.cpp" />
+    <ClCompile Include="src\wrapper\CommandBufferObject.cpp" />
     <ClCompile Include="src\wrapper\DescriptorObject.cpp" />
     <ClCompile Include="src\wrapper\Memory.cpp" />
     <ClCompile Include="src\wrapper\SwapchainObject.cpp" />
@@ -178,6 +180,9 @@
     <None Include="shaders\gui.frag" />
     <None Include="shaders\gui.vert" />
     <None Include="shaders\SpirVCompiler.bat" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\fontBitMap.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
