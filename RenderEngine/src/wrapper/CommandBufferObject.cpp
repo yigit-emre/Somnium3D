@@ -39,15 +39,3 @@ CommandPoolObject::CommandPoolObject(CommandPoolObject& move) noexcept : command
 {
 	move.commandPool = VK_NULL_HANDLE;
 }
-
-
-
-void ImageLayoutTransitionCMD(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
-{
-	VkImageMemoryBarrier barrier;
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-}

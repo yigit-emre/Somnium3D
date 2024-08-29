@@ -38,6 +38,5 @@ private:
 	void BuildGraphicsPipeline();
 	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
 	void CreateFontBitmapTexture(SingleTimeCommandsInfo& info);
-	void SingleTimeCommands(const SingleTimeCommandsInfo& info);
+	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
 };
-

@@ -16,5 +16,3 @@ public:
 };
 
 extern CommandPoolObject* graphicsFamilyCommandPoolST;
-
-void ImageLayoutTransitionCMD(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
