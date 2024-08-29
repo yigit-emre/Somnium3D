@@ -10,11 +10,6 @@ MemoryManager* MemoryManager::manager = nullptr;
 void* MemoryManager::mappedStagingMemory = nullptr;
 CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
 
-/*
-	Staging Memory Usage
-	* fontBitMap : 3KB
-*/
-
 static void CreateMemories() 
 {
 	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, S3D_SIZE_KB * 10, "deviceLocalMemory");

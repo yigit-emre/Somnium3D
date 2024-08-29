@@ -1,5 +1,17 @@
 #pragma once
 #include "glm/glm.hpp"
+#include "vulkan/vulkan.h"
+
+struct WidgetVertex
+{
+	glm::vec2 positions;
+	glm::vec2 texCoords;
+
+	static VkVertexInputBindingDescription getBindingDescription();
+	static void getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes);
+	static constexpr uint32_t attributeCount{ 2U };
+	//TODO: add mesh loader with unique vertices
+};
 
 class IRenderable
 {
