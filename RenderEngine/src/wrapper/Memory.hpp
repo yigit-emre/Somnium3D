@@ -7,7 +7,6 @@
 #define S3D_SIZE_MB 1000000U
 #define S3D_SIZE_GB 1000000000U
 
-struct AppWindowCreateInfo;
 extern void* mappedHostMemory;
 
 class MemoryAllocater
@@ -97,6 +96,6 @@ private:
 	std::unordered_map<std::string, MemoryObject> memoryObjects;
 	std::unordered_map<std::string, PhysicalMemory> physicalMemories;
 
-	friend void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection);
+	friend static void CreateMemories();
 	friend void s3DTerminateRenderEngine();
 };

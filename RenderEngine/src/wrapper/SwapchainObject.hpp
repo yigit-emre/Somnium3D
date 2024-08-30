@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.h"
+#define FRAMES_IN_FLIGHT 2U
 
 class SwapchainObject
 {

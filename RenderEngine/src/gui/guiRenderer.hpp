@@ -1,9 +1,9 @@
 #pragma once
-#define IN_DLL
 #include "core.hpp"
-#include "..\wrapper\SwapchainObject.hpp"
 #include "glm/glm.hpp"
-#include "widget.hpp"
+#include "..\Renderlist.hpp"
+#include "..\wrapper\SwapchainObject.hpp"
+#include "..\wrapper\CommandBufferObject.hpp"
 
 struct WidgetVertex
 {
@@ -39,9 +39,15 @@ private:
 	VkPipelineLayout pipelineLayout;
 	VkRenderPass renderPass;
 
-	VkFence singleTimeFence;
 	SwapchainObject swapchainObject;
-	
+	CommandPoolObject commandPoolObject;
+	VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
+
+	VkFence singleTimeFence;
+	VkFence inFlightFence[FRAMES_IN_FLIGHT];
+	VkSemaphore imageAvailableSemaphore[FRAMES_IN_FLIGHT];
+	VkSemaphore renderFinishedSemaphore[FRAMES_IN_FLIGHT];
+
 	glm::mat4 projM;
 	const WidgetVertex vertices[6];
 
@@ -54,8 +60,8 @@ private:
 	//TODO: dynamic descriptors
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
-	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
-	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
 	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
+	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
 	void updateUniforms(uint32_t currentImage, const glm::mat4& modelM);
+	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
 };

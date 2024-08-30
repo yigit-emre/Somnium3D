@@ -27,24 +27,16 @@ void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* p
 	pAttributes[1].offset = sizeof(glm::vec2);
 }
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), projM(glm::ortho(0.0f, static_cast<float>(swapchainObject.swapchainExtent.width), 0.0f, static_cast<float>(swapchainObject.swapchainExtent.height))),
-vertices{ {{-0.5f, 0.5f}, {0.0f, 0.0f}}, {{ 0.5f, 0.5f}, {1.0f, 0.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{-0.5f, -0.5f}, {0.0f, 1.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f}} }
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), 
+projM(glm::ortho(0.0f, static_cast<float>(swapchainObject.swapchainExtent.width), 0.0f, static_cast<float>(swapchainObject.swapchainExtent.height))), vertices{ {{-0.5f, 0.5f}, {0.0f, 0.0f}}, {{ 0.5f, 0.5f}, {1.0f, 0.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, 
+	{{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{-0.5f, -0.5f}, {0.0f, 1.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f}} }
 {
 	SingleTimeCommandsInfo stCommandsInfo{};
 	CreateResouces(stCommandsInfo);
 	CreateDescriptors();
 	BuildGraphicsPipeline();
 
-	//Creating sync objects
-	VkFenceCreateInfo fenceCreateInfo{};
-	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-	if(vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &singleTimeFence) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create single time fence!");
-
-	SingleTimeCommands(stCommandsInfo);
-
-	
+	SingleTimeCommands(stCommandsInfo);	
 }
 
 GUIRenderer::~GUIRenderer()
@@ -58,6 +50,11 @@ GUIRenderer::~GUIRenderer()
 
 	vkDestroyDescriptorPool(DEVICE, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(DEVICE, descriptorSetLayout, nullptr);
+}
+
+void GUIRenderer::Render()
+{
+
 }
 
 void GUIRenderer::CreateDescriptors()
@@ -459,6 +456,27 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
 	memcpy(static_cast<void*>(dst), &projM, sizeof(glm::mat4));
 	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &projM, sizeof(glm::mat4));
+
+	/************* Command Buffers Creation *************/
+	commandPoolObject.allocCommandBuffers(true, FRAMES_IN_FLIGHT, commandBuffers);
+
+	/************* Sync Objects Creation *************/
+	VkFenceCreateInfo fenceCreateInfo{};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+	if (vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &singleTimeFence) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create gui single time fence!");
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo{};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+	{
+		if (vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS || vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphore[i]) != VK_SUCCESS || 
+			vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create gui syncObjects!");
+	}
 }
 
 void GUIRenderer::updateUniforms(uint32_t currentImage, const glm::mat4& modelM)
