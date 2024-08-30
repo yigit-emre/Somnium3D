@@ -2,16 +2,42 @@
 #include "..\wrapper\Memory.hpp"
 #include "..\RenderPlatform.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
-#include "stb_image.h"
+#include "glm/gtc/matrix_transform.hpp"
 #include "..\FileIO.hpp"
+#include "stb_image.h"
 #include <stdexcept>
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR)
+void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
 {
+	pBindings[0].binding = 0;
+	pBindings[0].stride = sizeof(WidgetVertex);
+	pBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+}
+
+void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes)
+{
+	pAttributes[0].binding = 0;
+	pAttributes[0].location = 0;
+	pAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+	pAttributes[0].offset = 0;
+
+	pAttributes[1].binding = 0;
+	pAttributes[1].location = 1;
+	pAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
+	pAttributes[1].offset = sizeof(glm::vec2);
+}
+
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), projM(glm::ortho(0.0f, (float)swapchainObject.swapchainExtent.width, 0.0f, (float)swapchainObject.swapchainExtent.height)),
+vertices{ {{-0.5f, 0.5f}, {0.0f, 0.0f}}, {{ 0.5f, 0.5f}, {1.0f, 0.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{-0.5f, -0.5f}, {0.0f, 1.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f}} }
+{
+	
+
+	
+
 	SingleTimeCommandsInfo stCommandsInfo{};
+	CreateResouces(stCommandsInfo);
 	CreateDescriptors();
 	BuildGraphicsPipeline();
-	CreateFontBitmapTexture(stCommandsInfo);
 
 	//Creating sync objects
 	VkFenceCreateInfo fenceCreateInfo{};
@@ -21,6 +47,8 @@ GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR
 		throw std::runtime_error("Failed to create single time fence!");
 
 	SingleTimeCommands(stCommandsInfo);
+
+	
 }
 
 GUIRenderer::~GUIRenderer()
@@ -84,7 +112,8 @@ void GUIRenderer::CreateDescriptors()
 	if (vkAllocateDescriptorSets(DEVICE, &setAllocInfo, descriptorSets) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Descriptor set!");
 
-	//TODO: Uniform buffers, sampler
+	VkDescriptorBufferInfo bufferInfo{};
+	VkDescriptorImageInfo imageInfo{};
 }
 
 void GUIRenderer::BuildGraphicsPipeline()
@@ -113,13 +142,17 @@ void GUIRenderer::BuildGraphicsPipeline()
 	shaderStageInfo[1].module = vertexShaderModule;
 	shaderStageInfo[1].pName = "main";
 
-	//TODO: Vertex Input
-	/*VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	VkVertexInputAttributeDescription attributeDescriptions[WidgetVertex::getAttributeCount()];
+	WidgetVertex::getAttributeDescriptions(attributeDescriptions);
+	VkVertexInputBindingDescription bindingDescriptions[WidgetVertex::getBindingCount()];
+	WidgetVertex::getBindingDescriptions(bindingDescriptions);
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.vertexAttributeDescriptionCount = 3;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;*/
+	vertexInputInfo.vertexBindingDescriptionCount = WidgetVertex::getBindingCount();
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
+	vertexInputInfo.vertexAttributeDescriptionCount = WidgetVertex::getAttributeCount();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
 	// **************** RenderPass Stage ****************
 
@@ -168,7 +201,7 @@ void GUIRenderer::BuildGraphicsPipeline()
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStageInfo;
-	//pipelineCreateInfo.pVertexInputState = &vertexInputInfo; TODO
+	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
 	pipelineCreateInfo.layout = pipelineLayout;
 	pipelineCreateInfo.pDynamicState = nullptr;
 	pipelineCreateInfo.pDepthStencilState = nullptr;
@@ -241,67 +274,6 @@ void GUIRenderer::FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCrea
 	pipelineCreateInfo.pRasterizationState = &rasterizationInfo;
 	pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
 	pipelineCreateInfo.pColorBlendState = &colorBlendInfo;
-}
-
-void GUIRenderer::CreateFontBitmapTexture(SingleTimeCommandsInfo& stCommandsInfo)
-{
-	int width, height, channel;
-	stbi_uc* pixels = stbi_load("resouces\\fontBitmap.png", &width, &height, &channel, 1);
-
-	if (!pixels)
-		throw std::runtime_error("Failed to load fontBitmap texture!");
-
-	memcpy(MemoryManager::mappedStagingMemory, pixels, width * height * channel);
-	stbi_image_free(pixels);
-
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	imageInfo.extent = { (uint32_t)width, (uint32_t)height,  1U };
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-	VkImageViewCreateInfo viewInfo{};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
-
-	MemoryManager::manager->createMemoryObject(nullptr, &imageInfo, &viewInfo, "fontBitmapTexture");
-	if(MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory") != VK_SUCCESS)
-		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
-
-	stCommandsInfo.imageExtent = imageInfo.extent;
-
-	VkSamplerCreateInfo samplerCreateInfo{};
-	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-	samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	samplerCreateInfo.anisotropyEnable = VK_FALSE;
-	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE; // TODO: Consider to make it true
-	samplerCreateInfo.compareEnable = VK_FALSE;
-	samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerCreateInfo.mipLodBias = 0.0f;
-	samplerCreateInfo.minLod = 0.0f;
-	samplerCreateInfo.maxLod = 0.0f;
-
-	if (vkCreateSampler(DEVICE, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI texture sampler!");
-
 }
 
 void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInfo) const
@@ -380,4 +352,77 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
+}
+
+void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
+{
+	/************* Font Image Creation *************/
+	int width, height, channel;
+	stbi_uc* pixels = stbi_load("resouces\\fontBitmap.png", &width, &height, &channel, 1);
+
+	if (!pixels)
+		throw std::runtime_error("Failed to load fontBitmap texture!");
+
+	memcpy(MemoryManager::mappedStagingMemory, pixels, width * height * channel);
+	stbi_image_free(pixels);
+
+	VkImageCreateInfo fontImageInfo{};
+	fontImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	fontImageInfo.imageType = VK_IMAGE_TYPE_2D;
+	fontImageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	fontImageInfo.extent = { (uint32_t)width, (uint32_t)height,  1U };
+	fontImageInfo.mipLevels = 1;
+	fontImageInfo.arrayLayers = 1;
+	fontImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	fontImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	fontImageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	fontImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	fontImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VkImageViewCreateInfo fontvViewInfo{};
+	fontvViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	fontvViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	fontvViewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	fontvViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	fontvViewInfo.subresourceRange.baseMipLevel = 0;
+	fontvViewInfo.subresourceRange.levelCount = 1;
+	fontvViewInfo.subresourceRange.baseArrayLayer = 0;
+	fontvViewInfo.subresourceRange.layerCount = 1;
+
+	MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, &fontvViewInfo, "fontBitmapTexture");
+	if (MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory") != VK_SUCCESS)
+		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
+
+	stCommandsInfo.imageExtent = fontImageInfo.extent;
+
+	VkSamplerCreateInfo samplerCreateInfo{};
+	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+	samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.anisotropyEnable = VK_FALSE;
+	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE; // TODO: Consider to make it true
+	samplerCreateInfo.compareEnable = VK_FALSE;
+	samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerCreateInfo.mipLodBias = 0.0f;
+	samplerCreateInfo.minLod = 0.0f;
+	samplerCreateInfo.maxLod = 0.0f;
+
+	if (vkCreateSampler(DEVICE, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create GUI texture sampler!");
+
+	/************* Uniform Buffer Creation *************/
+	VkBufferCreateInfo uniformBufferCreateInfo{};
+	uniformBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	uniformBufferCreateInfo.size = sizeof(glm::mat4) * 2 * 2;
+	uniformBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	uniformBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	MemoryManager::manager->createMemoryObject(&uniformBufferCreateInfo, nullptr, nullptr, "guiUniformBuffer");
+	if (MemoryManager::manager->BindObjectToMemory("guiUniformBuffer", "hostVis&CohMemory") != VK_SUCCESS)
+		throw std::runtime_error("Failed to binid guiUniformBuffer to hostVis&CohMemory");
+
 }

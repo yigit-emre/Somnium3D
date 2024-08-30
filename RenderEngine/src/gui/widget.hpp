@@ -2,17 +2,6 @@
 #include "glm/glm.hpp"
 #include "vulkan/vulkan.h"
 
-struct WidgetVertex
-{
-	glm::vec2 positions;
-	glm::vec2 texCoords;
-
-	static VkVertexInputBindingDescription getBindingDescription();
-	static void getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes);
-	static constexpr uint32_t attributeCount{ 2U };
-	//TODO: add mesh loader with unique vertices
-};
-
 class IRenderable
 {
 public:
@@ -23,6 +12,7 @@ public:
 	glm::vec3 position;
 
 	virtual void Render() = 0;
+	static inline constexpr uint32_t getVertexCount() { return 6U; }
 };
 
 class Window : public IRenderable

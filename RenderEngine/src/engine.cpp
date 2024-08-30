@@ -13,7 +13,7 @@ CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
 static void CreateMemories() 
 {
 	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, S3D_SIZE_KB * 10, "deviceLocalMemory");
-	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, S3D_SIZE_KB * 10, "stagingMemory");
+	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, S3D_SIZE_KB * 10, "hostVis&CohMemory");
 
 	VkBufferCreateInfo bufferCreateInfo{};
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -21,9 +21,10 @@ static void CreateMemories()
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, nullptr, "stagingBuffer");
-	MemoryManager::manager->BindObjectToMemory("stagingBuffer", "stagingMemory");
-	if (MemoryManager::manager->MapPhysicalMemory("stagingMemory", &MemoryManager::mappedStagingMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to map stagingMemory!");
+	if(MemoryManager::manager->BindObjectToMemory("stagingBuffer", "hostVis&CohMemory") != VK_SUCCESS)
+		throw std::runtime_error("Failed to bind stagingBuffer to hostVis&CohMemory!");
+	if (MemoryManager::manager->MapPhysicalMemory("hostVis&CohMemory", &MemoryManager::mappedStagingMemory) != VK_SUCCESS)
+		throw std::runtime_error("Failed to map hostVis&CohMemory!");
 }
 
 S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
@@ -44,7 +45,7 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 
 S3D_API void s3DTerminateRenderEngine()
 {
-	MemoryManager::manager->UnMapPhysicalMemory("stagingMemory");	
+	MemoryManager::manager->UnMapPhysicalMemory("hostVis&CohMemory");	
 	delete graphicsFamilyCommandPoolST;
 	delete MemoryManager::manager;
 	delete RenderPlatform::platform;
