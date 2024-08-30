@@ -8,6 +8,7 @@
 #define S3D_SIZE_GB 1000000000U
 
 struct AppWindowCreateInfo;
+extern void* mappedHostMemory;
 
 class MemoryAllocater
 {
@@ -87,7 +88,6 @@ public:
 	void freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo);
 
 	static MemoryManager* manager;
-	static void* mappedStagingMemory;
 private:
 	MemoryManager() = default;
 	~MemoryManager() = default;

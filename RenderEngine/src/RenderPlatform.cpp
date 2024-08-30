@@ -99,7 +99,7 @@ void RenderPlatform::InitLibs(const RenderPlatformInfo& info)
 		throw std::runtime_error("Failed to create window surface!");
 }
 
-bool RenderPlatform::IsDeviceSuitable(VkPhysicalDevice& physDevice, const RenderPlatformInfo& info)
+bool RenderPlatform::IsDeviceSuitable(VkPhysicalDevice physDevice, const RenderPlatformInfo& info)
 {
 	//querying QueueFamilies
 	uint32_t enumeraterCount;

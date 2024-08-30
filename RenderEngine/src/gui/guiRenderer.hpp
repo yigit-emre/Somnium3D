@@ -3,6 +3,7 @@
 #include "core.hpp"
 #include "..\wrapper\SwapchainObject.hpp"
 #include "glm/glm.hpp"
+#include "widget.hpp"
 
 struct WidgetVertex
 {
@@ -41,7 +42,7 @@ private:
 	VkFence singleTimeFence;
 	SwapchainObject swapchainObject;
 	
-	const glm::mat4 projM;
+	glm::mat4 projM;
 	const WidgetVertex vertices[6];
 
 	VkDescriptorPool descriptorPool;
@@ -56,5 +57,5 @@ private:
 	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
 	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
 	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
-	void updateUniforms();
+	void updateUniforms(uint32_t currentImage, const glm::mat4& modelM);
 };

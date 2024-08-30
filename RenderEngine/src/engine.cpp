@@ -6,9 +6,9 @@
 #include <stdexcept>
 
 const RenderPlatform* RenderPlatform::platform = nullptr;
-MemoryManager* MemoryManager::manager = nullptr;
-void* MemoryManager::mappedStagingMemory = nullptr;
 CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
+MemoryManager* MemoryManager::manager = nullptr;
+void* mappedHostMemory = nullptr;
 
 static void CreateMemories() 
 {
@@ -23,7 +23,7 @@ static void CreateMemories()
 	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, nullptr, "stagingBuffer");
 	if(MemoryManager::manager->BindObjectToMemory("stagingBuffer", "hostVis&CohMemory") != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind stagingBuffer to hostVis&CohMemory!");
-	if (MemoryManager::manager->MapPhysicalMemory("hostVis&CohMemory", &MemoryManager::mappedStagingMemory) != VK_SUCCESS)
+	if (MemoryManager::manager->MapPhysicalMemory("hostVis&CohMemory", &mappedHostMemory) != VK_SUCCESS)
 		throw std::runtime_error("Failed to map hostVis&CohMemory!");
 }
 

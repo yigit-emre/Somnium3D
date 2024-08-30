@@ -43,7 +43,7 @@ private:
 	RenderPlatform(const RenderPlatformInfo& info, bool manuelSelection = false);
 
 	void InitLibs(const RenderPlatformInfo& info);
-	bool IsDeviceSuitable(VkPhysicalDevice& physDevice, const RenderPlatformInfo& info);
+	bool IsDeviceSuitable(VkPhysicalDevice physDevice, const RenderPlatformInfo& info);
 	void SelectPhysicalDevice(bool manuelSelection, const RenderPlatformInfo& info);
 	void CreateLogicalDevice(const RenderPlatformInfo& info);
 

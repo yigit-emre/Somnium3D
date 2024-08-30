@@ -27,13 +27,9 @@ void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* p
 	pAttributes[1].offset = sizeof(glm::vec2);
 }
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), projM(glm::ortho(0.0f, (float)swapchainObject.swapchainExtent.width, 0.0f, (float)swapchainObject.swapchainExtent.height)),
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), projM(glm::ortho(0.0f, static_cast<float>(swapchainObject.swapchainExtent.width), 0.0f, static_cast<float>(swapchainObject.swapchainExtent.height))),
 vertices{ {{-0.5f, 0.5f}, {0.0f, 0.0f}}, {{ 0.5f, 0.5f}, {1.0f, 0.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{-0.5f, -0.5f}, {0.0f, 1.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f}} }
 {
-	
-
-	
-
 	SingleTimeCommandsInfo stCommandsInfo{};
 	CreateResouces(stCommandsInfo);
 	CreateDescriptors();
@@ -112,8 +108,41 @@ void GUIRenderer::CreateDescriptors()
 	if (vkAllocateDescriptorSets(DEVICE, &setAllocInfo, descriptorSets) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Descriptor set!");
 
-	VkDescriptorBufferInfo bufferInfo{};
+	VkDescriptorBufferInfo bufferInfos[2];
+	bufferInfos[0].buffer = MemoryManager::manager->getMemoryObject("guiUniformBUffer").buffer;
+	bufferInfos[0].offset = 0;
+	bufferInfos[0].range = sizeof(glm::mat4) * 2;
+
+	bufferInfos[1].buffer = bufferInfos[0].buffer;
+	bufferInfos[1].offset = sizeof(glm::mat4) * 2;
+	bufferInfos[1].range = sizeof(glm::mat4) * 2;
+
 	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = MemoryManager::manager->getMemoryObject("fontBitmapTexture").imageView;
+	imageInfo.sampler = textureSampler;
+
+	VkWriteDescriptorSet descriptorWrites[2]{};
+	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+	{
+		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[0].dstSet = descriptorSets[i];
+		descriptorWrites[0].dstBinding = 0;
+		descriptorWrites[0].dstArrayElement = 0;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[0].descriptorCount = 1;
+		descriptorWrites[0].pBufferInfo = bufferInfos + i;
+
+		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[1].dstSet = descriptorSets[i];
+		descriptorWrites[1].dstBinding = 1;
+		descriptorWrites[1].dstArrayElement = 0;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[1].descriptorCount = 1;
+		descriptorWrites[1].pImageInfo = &imageInfo;
+
+		vkUpdateDescriptorSets(DEVICE, 2, descriptorWrites, 0, nullptr);
+	}
 }
 
 void GUIRenderer::BuildGraphicsPipeline()
@@ -341,6 +370,8 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+	/************* Uniform Buffer Operations *************/
+
 	vkEndCommandBuffer(commandBuffer);
 
 	VkSubmitInfo submitInfo{};
@@ -363,7 +394,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	if (!pixels)
 		throw std::runtime_error("Failed to load fontBitmap texture!");
 
-	memcpy(MemoryManager::mappedStagingMemory, pixels, width * height * channel);
+	memcpy(mappedHostMemory, pixels, static_cast<uint64_t>(width * height * channel));
 	stbi_image_free(pixels);
 
 	VkImageCreateInfo fontImageInfo{};
@@ -425,4 +456,14 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	if (MemoryManager::manager->BindObjectToMemory("guiUniformBuffer", "hostVis&CohMemory") != VK_SUCCESS)
 		throw std::runtime_error("Failed to binid guiUniformBuffer to hostVis&CohMemory");
 
+	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
+	memcpy(static_cast<void*>(dst), &projM, sizeof(glm::mat4));
+	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &projM, sizeof(glm::mat4));
+}
+
+void GUIRenderer::updateUniforms(uint32_t currentImage, const glm::mat4& modelM)
+{
+	//TODO: Adjust projM for run-time resizing!
+	static char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset + sizeof(glm::mat4);
+	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2 * currentImage), &modelM, sizeof(glm::mat4));
 }
