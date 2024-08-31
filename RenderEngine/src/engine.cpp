@@ -1,7 +1,6 @@
 #define S3D_RENDER_ENGINE_EXPORT
 #include "engine.hpp"
 #include "RenderPlatform.hpp"
-#include "wrapper/Memory.hpp"
 #include "gui/guiRenderer.hpp"
 #include <stdexcept>
 
@@ -44,7 +43,7 @@ static void CreateMemories()
 
 	VkBufferCreateInfo bufferCreateInfo{};
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = S3D_SIZE_KB * 6;
+	bufferCreateInfo.size = S3D_SIZE_KB * 5;
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, nullptr, "stagingBuffer");

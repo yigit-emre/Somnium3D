@@ -1,5 +1,6 @@
-#include "SwapchainObject.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include "..\RenderPlatform.hpp"
+#include "SwapchainObject.hpp"
 #include "Memory.hpp"
 #include <stdexcept>
 #include <vector>
@@ -30,7 +31,7 @@ struct SwapChainSupportDetails
 	inline bool GetSwapChainDetails() const { return !(formats.empty() || presentModes.empty()); };
 };
 
-SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode)
+SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, bool isProjMOrtho, bool isProjMDynamic)
 {
 	SwapChainSupportDetails details(RenderPlatform::platform->physicalDevice, RenderPlatform::platform->surface);
 
@@ -121,6 +122,11 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 		if (vkCreateImageView(DEVICE, &viewInfo, nullptr, &imageViews[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create swapchain imageViews!");
 	}
+
+	if (isProjMOrtho)
+		projM = glm::ortho(0.0f, static_cast<float>(swapchainExtent.width), 0.0f, static_cast<float>(swapchainExtent.height));
+	else
+		projM = glm::perspective(glm::radians(45.0f), static_cast<float>(swapchainExtent.width) / static_cast<float>(swapchainExtent.height), 0.1f, 50.0f);
 }
 
 SwapchainObject::~SwapchainObject()
@@ -138,7 +144,7 @@ SwapchainObject::~SwapchainObject()
 }
 
 SwapchainObject::SwapchainObject(SwapchainObject&& move) noexcept : swapchain(move.swapchain), images(move.images), imageViews(move.imageViews),
-imageCount(move.imageCount), swapchainFormat(move.swapchainFormat), swapchainExtent(move.swapchainExtent)
+imageCount(move.imageCount), swapchainFormat(move.swapchainFormat), swapchainExtent(move.swapchainExtent), projM(std::move(move.projM))
 {
 	move.images = nullptr;
 	move.imageViews = nullptr;

@@ -187,11 +187,16 @@ VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::strin
 		throw std::runtime_error("Failed to find requested memory and memory object to bind!");
 }
 
-MemoryAllocater::MemoryInfo MemoryManager::allocMemory(std::string objectKeyName, uint32_t size)
+MemoryAllocater::MemoryInfo MemoryManager::allocMemory(std::string objectKeyName, uint32_t size, void** pMappedMemory)
 {
-	if (memoryObjects.find(objectKeyName) != memoryObjects.end())
-		return memoryObjects[objectKeyName].memoryAllocater.allocSubMemory(size, 1, (uint32_t)memoryObjects[objectKeyName].memoryRequirements.size);
-	return {};
+	MemoryAllocater::MemoryInfo info{};
+	if (memoryObjects.find(objectKeyName) != memoryObjects.end()) 
+	{
+		info = memoryObjects[objectKeyName].memoryAllocater.allocSubMemory(size, 1, (uint32_t)memoryObjects[objectKeyName].memoryRequirements.size);
+		if (pMappedMemory)
+			*pMappedMemory = reinterpret_cast<void*>(reinterpret_cast<char*>(*pMappedMemory) + info.startOffset + memoryObjects[objectKeyName].memoryPlace.startOffset);
+	}
+	return info;
 }
 
 void MemoryManager::freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo)

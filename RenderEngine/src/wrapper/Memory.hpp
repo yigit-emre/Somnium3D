@@ -83,7 +83,7 @@ public:
 	void UnBindObjectFromMemory(std::string objectKeyName, std::string physicalKeyName);
 	VkResult BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName);
 
-	MemoryAllocater::MemoryInfo allocMemory(std::string objectKeyName, uint32_t size);
+	_NODISCARD MemoryAllocater::MemoryInfo allocMemory(std::string objectKeyName, uint32_t size, void** pMappedMemory = nullptr);
 	void freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo);
 
 	static MemoryManager* manager;

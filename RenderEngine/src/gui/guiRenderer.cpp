@@ -1,5 +1,4 @@
 #include "guiRenderer.hpp"
-#include "..\wrapper\Memory.hpp"
 #include "..\RenderPlatform.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -7,29 +6,8 @@
 #include "stb_image.h"
 #include <stdexcept>
 
-void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
-{
-	pBindings[0].binding = 0;
-	pBindings[0].stride = sizeof(WidgetVertex);
-	pBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-}
-
-void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes)
-{
-	pAttributes[0].binding = 0;
-	pAttributes[0].location = 0;
-	pAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
-	pAttributes[0].offset = 0;
-
-	pAttributes[1].binding = 0;
-	pAttributes[1].location = 1;
-	pAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
-	pAttributes[1].offset = sizeof(glm::vec2);
-}
-
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), 
-projM(glm::ortho(0.0f, static_cast<float>(swapchainObject.swapchainExtent.width), 0.0f, static_cast<float>(swapchainObject.swapchainExtent.height))), vertices{ {{-0.5f, 0.5f}, {0.0f, 0.0f}}, {{ 0.5f, 0.5f}, {1.0f, 0.0f}}, {{ 0.5f, -0.5f}, {1.0f, 1.0f}}, 
-	{{ 0.5f, -0.5f}, {1.0f, 1.0f}}, {{-0.5f, -0.5f}, {0.0f, 1.0f}}, {{-0.5f, 0.5f}, {0.0f, 0.0f}} }
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR, true, false), 
+commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex) 
 {
 	SingleTimeCommandsInfo stCommandsInfo{};
 	CreateResouces(stCommandsInfo);
@@ -168,16 +146,16 @@ void GUIRenderer::BuildGraphicsPipeline()
 	shaderStageInfo[1].module = vertexShaderModule;
 	shaderStageInfo[1].pName = "main";
 
-	VkVertexInputAttributeDescription attributeDescriptions[WidgetVertex::getAttributeCount()];
-	WidgetVertex::getAttributeDescriptions(attributeDescriptions);
-	VkVertexInputBindingDescription bindingDescriptions[WidgetVertex::getBindingCount()];
-	WidgetVertex::getBindingDescriptions(bindingDescriptions);
+	VkVertexInputAttributeDescription attributeDescriptions[MeshLoader::WidgetVertex::getAttributeCount()];
+	MeshLoader::WidgetVertex::getAttributeDescriptions(attributeDescriptions);
+	VkVertexInputBindingDescription bindingDescriptions[MeshLoader::WidgetVertex::getBindingCount()];
+	MeshLoader::WidgetVertex::getBindingDescriptions(bindingDescriptions);
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = WidgetVertex::getBindingCount();
+	vertexInputInfo.vertexBindingDescriptionCount = MeshLoader::WidgetVertex::getBindingCount();
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
-	vertexInputInfo.vertexAttributeDescriptionCount = WidgetVertex::getAttributeCount();
+	vertexInputInfo.vertexAttributeDescriptionCount = MeshLoader::WidgetVertex::getAttributeCount();
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
 	// **************** RenderPass Stage ****************
@@ -350,24 +328,29 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
 	/************* Font Image Operations *************/ 
-	VkBufferImageCopy region{};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = { 0, 0, 0 };
-	region.imageExtent = stCommandsInfo.imageExtent;
+	VkBufferImageCopy bufferImageCopyRegion{};
+	bufferImageCopyRegion.bufferOffset = stCommandsInfo.fontImageStagingMemoryInfo.startOffset;
+	bufferImageCopyRegion.bufferRowLength = 0;
+	bufferImageCopyRegion.bufferImageHeight = 0;
+	bufferImageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	bufferImageCopyRegion.imageSubresource.mipLevel = 0;
+	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
+	bufferImageCopyRegion.imageSubresource.layerCount = 1;
+	bufferImageCopyRegion.imageOffset = { 0, 0, 0 };
+	bufferImageCopyRegion.imageExtent = stCommandsInfo.imageExtent;
 
-	const VkImage& image = MemoryManager::manager->getMemoryObject("fontBitmapTexture").image;
+	VkImage image = MemoryManager::manager->getMemoryObject("fontBitmapTexture").image;
 
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-	/************* Uniform Buffer Operations *************/
+	/************* Vertex Buffer Operations *************/
+	VkBufferCopy bufferCopyRegion;
+	bufferCopyRegion.srcOffset = stCommandsInfo.vertexBufferStagingMemoryInfo.startOffset;
+	bufferCopyRegion.dstOffset = 0ULL;
+	bufferCopyRegion.size = sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount();
+	vkCmdCopyBuffer(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, MemoryManager::manager->getMemoryObject("widgetVertexBuffer").buffer, 1, &bufferCopyRegion);
 
 	vkEndCommandBuffer(commandBuffer);
 
@@ -380,6 +363,8 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
+	MemoryManager::manager->freeMemory("stagingBuffer", stCommandsInfo.fontImageStagingMemoryInfo);
+	MemoryManager::manager->freeMemory("stagingBuffer", stCommandsInfo.vertexBufferStagingMemoryInfo);
 }
 
 void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
@@ -391,7 +376,9 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	if (!pixels)
 		throw std::runtime_error("Failed to load fontBitmap texture!");
 
-	memcpy(mappedHostMemory, pixels, static_cast<uint64_t>(width * height * channel));
+	void* data = mappedHostMemory;
+	stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", static_cast<uint32_t>(width * height * channel), &data);
+	memcpy(data, pixels, static_cast<uint64_t>(width * height * channel));
 	stbi_image_free(pixels);
 
 	VkImageCreateInfo fontImageInfo{};
@@ -454,8 +441,25 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 		throw std::runtime_error("Failed to binid guiUniformBuffer to hostVis&CohMemory");
 
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
-	memcpy(static_cast<void*>(dst), &projM, sizeof(glm::mat4));
-	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &projM, sizeof(glm::mat4));
+	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
+	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &swapchainObject.projM, sizeof(glm::mat4));
+
+	/************* Vertex Buffer Creation *************/
+	VkBufferCreateInfo vertexBufferCreateInfo{};
+	vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vertexBufferCreateInfo.size = sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount();
+	vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, nullptr, "widgetVertexBuffer");
+	if (MemoryManager::manager->BindObjectToMemory("widgetVertexBuffer", "deviceLocalMemory") != VK_SUCCESS)
+		throw std::runtime_error("Failed to bind widgetVertexBuffer to deviceLocalMemory!");
+
+	data = mappedHostMemory;
+	stCommandsInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), &data);
+	MeshLoader::WidgetVertex widgetVertices[MeshLoader::WidgetVertex::getWidgetVertexCount()];
+	MeshLoader::WidgetVertexLoader(widgetVertices);
+	memcpy(data, widgetVertices, sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount());
 
 	/************* Command Buffers Creation *************/
 	commandPoolObject.allocCommandBuffers(true, FRAMES_IN_FLIGHT, commandBuffers);

@@ -1,22 +1,8 @@
 #pragma once
 #include "core.hpp"
-#include "glm/glm.hpp"
-#include "..\Renderlist.hpp"
+#include "..\wrapper\Memory.hpp"
 #include "..\wrapper\SwapchainObject.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
-
-struct WidgetVertex
-{
-public:
-	glm::vec2 positions;
-	glm::vec2 texCoords;
-
-	static void getBindingDescriptions(VkVertexInputBindingDescription* pBindings);
-	static void getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes);
-	inline static constexpr uint32_t getBindingCount() { return 1U; }
-	inline static constexpr uint32_t getAttributeCount() { return 2U; }
-	//TODO: add mesh loader with unique vertices
-};
 
 class GUIRenderer
 {
@@ -32,6 +18,8 @@ private:
 	struct SingleTimeCommandsInfo
 	{
 		VkExtent3D imageExtent;
+		MemoryAllocater::MemoryInfo fontImageStagingMemoryInfo;
+		MemoryAllocater::MemoryInfo vertexBufferStagingMemoryInfo;
 	};
 
 private:
@@ -47,9 +35,6 @@ private:
 	VkFence inFlightFence[FRAMES_IN_FLIGHT];
 	VkSemaphore imageAvailableSemaphore[FRAMES_IN_FLIGHT];
 	VkSemaphore renderFinishedSemaphore[FRAMES_IN_FLIGHT];
-
-	glm::mat4 projM;
-	const WidgetVertex vertices[6];
 
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSetLayout descriptorSetLayout;

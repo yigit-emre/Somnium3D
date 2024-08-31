@@ -1,13 +1,15 @@
 #pragma once
-#include "..\Renderlist.hpp"
-#include "vulkan/vulkan.h"
+#include "glm/glm.hpp"
 
-class Window : public IRenderable
+//TODO: Make a manager, window
+
+class IRenderable
 {
 public:
-	Window();
-	~Window();
+	IRenderable();
+	~IRenderable() = default;
 
-	glm::vec2 extent;
-	void Render() override;
+	glm::mat4 modelM;
+	glm::vec3 position;
 };
+
