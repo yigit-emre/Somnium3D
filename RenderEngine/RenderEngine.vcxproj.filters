@@ -86,7 +86,7 @@
     <None Include="shaders\guiVert.spv" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="resources\fontBitMap.png">
+    <Image Include="resources\fontBitmap.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

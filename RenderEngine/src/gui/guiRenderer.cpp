@@ -92,14 +92,14 @@ void GUIRenderer::Render()
 
 void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame)
 {
-	VkCommandBufferBeginInfo commandBufferBeginInfo;
+	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 	if (vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo) != VK_SUCCESS)
 		throw std::runtime_error("Failed to begin gui commandBuffer!");
 
 	VkClearValue clearValue{ 0.0f, 0.0f, 0.0f, 1.0f };
-	VkRenderPassBeginInfo renderPassBeginInfo;
+	VkRenderPassBeginInfo renderPassBeginInfo{};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo.renderPass = renderPass;
 	renderPassBeginInfo.framebuffer = frameBuffers[currentImageIndex];
@@ -172,7 +172,7 @@ void GUIRenderer::CreateDescriptors()
 		throw std::runtime_error("Failed to create GUI Descriptor set!");
 
 	VkDescriptorBufferInfo bufferInfos[2];
-	bufferInfos[0].buffer = MemoryManager::manager->getMemoryObject("guiUniformBUffer").buffer;
+	bufferInfos[0].buffer = MemoryManager::manager->getMemoryObject("guiUniformBuffer").buffer;
 	bufferInfos[0].offset = 0;
 	bufferInfos[0].range = sizeof(glm::mat4) * 2;
 
@@ -220,8 +220,8 @@ void GUIRenderer::BuildGraphicsPipeline()
 	if (vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Pipeline layout!");
 
-	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("shaders\\guiVert.spv");
-	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("shaders\\guiFrag.spv");
+	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiVert.spv");
+	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiFrag.spv");
 
 	VkPipelineShaderStageCreateInfo shaderStageInfo[2]{};
 	shaderStageInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -245,6 +245,57 @@ void GUIRenderer::BuildGraphicsPipeline()
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
 	vertexInputInfo.vertexAttributeDescriptionCount = MeshLoader::WidgetVertex::getAttributeCount();
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
+
+	// **************** Fixed Pipeline Stages ****************
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchainObject.swapchainExtent.width;
+	viewport.height = (float)swapchainObject.swapchainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchainObject.swapchainExtent;
+
+	VkPipelineViewportStateCreateInfo viewportStateInfo{};
+	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportStateInfo.pViewports = &viewport;
+	viewportStateInfo.viewportCount = 1;
+	viewportStateInfo.pScissors = &scissor;
+	viewportStateInfo.scissorCount = 1;
+
+	VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
+	rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizationInfo.depthClampEnable = VK_FALSE;
+	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizationInfo.lineWidth = 1.0f;
+	rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizationInfo.depthBiasEnable = VK_FALSE;
+
+	VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+	multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisamplingInfo.sampleShadingEnable = VK_FALSE;
+	multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+
+	VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
+	colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlendInfo.logicOpEnable = VK_FALSE;
+	colorBlendInfo.attachmentCount = 1;
+	colorBlendInfo.pAttachments = &colorBlendAttachment;
 
 	// **************** RenderPass Stage ****************
 
@@ -295,11 +346,15 @@ void GUIRenderer::BuildGraphicsPipeline()
 	pipelineCreateInfo.pStages = shaderStageInfo;
 	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
 	pipelineCreateInfo.layout = pipelineLayout;
+	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
+	pipelineCreateInfo.pViewportState = &viewportStateInfo;
+	pipelineCreateInfo.pRasterizationState = &rasterizationInfo;
+	pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
+	pipelineCreateInfo.pColorBlendState = &colorBlendInfo;
 	pipelineCreateInfo.pDynamicState = nullptr;
 	pipelineCreateInfo.pDepthStencilState = nullptr;
 	pipelineCreateInfo.renderPass = renderPass;
 	pipelineCreateInfo.subpass = 0;
-	FixedPipelineStages(pipelineCreateInfo);
 
 	if (vkCreateGraphicsPipelines(DEVICE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS)  {
 		vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
@@ -323,64 +378,6 @@ void GUIRenderer::BuildGraphicsPipeline()
 		if (vkCreateFramebuffer(DEVICE, &frameBufferCreateInfo, nullptr, &frameBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create gui framebuffer!");
 	}
-}
-
-void GUIRenderer::FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const
-{
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchainObject.swapchainExtent.width;
-	viewport.height = (float)swapchainObject.swapchainExtent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor{};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchainObject.swapchainExtent;
-
-	VkPipelineViewportStateCreateInfo viewportStateInfo{};
-	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportStateInfo.pViewports = &viewport;
-	viewportStateInfo.viewportCount = 1;
-	viewportStateInfo.pScissors = &scissor;
-	viewportStateInfo.scissorCount = 1;
-
-	VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
-	rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizationInfo.depthClampEnable = VK_FALSE;
-	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizationInfo.lineWidth = 1.0f;
-	rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizationInfo.depthBiasEnable = VK_FALSE;
-
-	VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
-	multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisamplingInfo.sampleShadingEnable = VK_FALSE;
-	multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
-
-	VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
-	colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlendInfo.logicOpEnable = VK_FALSE;
-	colorBlendInfo.attachmentCount = 1;
-	colorBlendInfo.pAttachments = &colorBlendAttachment;
-
-	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
-	pipelineCreateInfo.pViewportState = &viewportStateInfo;
-	pipelineCreateInfo.pRasterizationState = &rasterizationInfo;
-	pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
-	pipelineCreateInfo.pColorBlendState = &colorBlendInfo;
 }
 
 void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInfo) const
@@ -475,21 +472,22 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 {
 	/************* Font Image Creation *************/
 	int width, height, channel;
-	stbi_uc* pixels = stbi_load("resouces\\fontBitmap.png", &width, &height, &channel, 1);
-
-	if (!pixels)
+	if (stbi_uc* pixels = stbi_load("D:\\visualDEV\\Somnium3D\\RenderEngine\\resources\\fontBitmap.png", &width, &height, &channel, 1))
+	{
+		void* data = mappedHostMemory;
+		stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", static_cast<uint32_t>(width * height * 1), &data); // '1' stands for desired channel
+		memcpy(data, pixels, static_cast<uint64_t>(width * height * 1)); // '1' stands for desired channel
+		stbi_image_free(pixels);
+	}
+	else 
 		throw std::runtime_error("Failed to load fontBitmap texture!");
-
-	void* data = mappedHostMemory;
-	stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", static_cast<uint32_t>(width * height * channel), &data);
-	memcpy(data, pixels, static_cast<uint64_t>(width * height * channel));
-	stbi_image_free(pixels);
+		
 
 	VkImageCreateInfo fontImageInfo{};
 	fontImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	fontImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	fontImageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	fontImageInfo.extent = { (uint32_t)width, (uint32_t)height,  1U };
+	fontImageInfo.format = VK_FORMAT_R8_UNORM;
+	fontImageInfo.extent = { static_cast<uint32_t>(width),  static_cast<uint32_t>(height),  1U };
 	fontImageInfo.mipLevels = 1;
 	fontImageInfo.arrayLayers = 1;
 	fontImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -498,18 +496,18 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	fontImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	fontImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	VkImageViewCreateInfo fontvViewInfo{};
-	fontvViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	fontvViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	fontvViewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-	fontvViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	fontvViewInfo.subresourceRange.baseMipLevel = 0;
-	fontvViewInfo.subresourceRange.levelCount = 1;
-	fontvViewInfo.subresourceRange.baseArrayLayer = 0;
-	fontvViewInfo.subresourceRange.layerCount = 1;
+	VkImageViewCreateInfo fontViewInfo{};
+	fontViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	fontViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	fontViewInfo.format = VK_FORMAT_R8_UNORM;
+	fontViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	fontViewInfo.subresourceRange.baseMipLevel = 0;
+	fontViewInfo.subresourceRange.levelCount = 1;
+	fontViewInfo.subresourceRange.baseArrayLayer = 0;
+	fontViewInfo.subresourceRange.layerCount = 1;
 
-	MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, &fontvViewInfo, "fontBitmapTexture");
-	if (MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory") != VK_SUCCESS)
+	MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, "fontBitmapTexture");
+	if (MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory", &fontViewInfo) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
 
 	stCommandsInfo.imageExtent = fontImageInfo.extent;
@@ -540,8 +538,8 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	uniformBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	uniformBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	MemoryManager::manager->createMemoryObject(&uniformBufferCreateInfo, nullptr, nullptr, "guiUniformBuffer");
-	if (MemoryManager::manager->BindObjectToMemory("guiUniformBuffer", "hostVis&CohMemory") != VK_SUCCESS)
+	MemoryManager::manager->createMemoryObject(&uniformBufferCreateInfo, nullptr, "guiUniformBuffer");
+	if (MemoryManager::manager->BindObjectToMemory("guiUniformBuffer", "hostVis&CohMemory", nullptr) != VK_SUCCESS)
 		throw std::runtime_error("Failed to binid guiUniformBuffer to hostVis&CohMemory");
 
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
@@ -557,11 +555,11 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, nullptr, "widgetVertexBuffer");
-	if (MemoryManager::manager->BindObjectToMemory("widgetVertexBuffer", "deviceLocalMemory") != VK_SUCCESS)
+	MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, "widgetVertexBuffer");
+	if (MemoryManager::manager->BindObjectToMemory("widgetVertexBuffer", "deviceLocalMemory", nullptr) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind widgetVertexBuffer to deviceLocalMemory!");
 
-	data = mappedHostMemory;
+	void* data = mappedHostMemory;
 	stCommandsInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), &data);
 	MeshLoader::WidgetVertex widgetVertices[MeshLoader::WidgetVertex::getWidgetVertexCount()];
 	MeshLoader::WidgetVertexLoader(widgetVertices);

@@ -52,9 +52,9 @@ static void CreateMemories()
 	bufferCreateInfo.size = S3D_SIZE_KB * 5;
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, nullptr, "stagingBuffer");
+	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, "stagingBuffer");
 
-	if (MemoryManager::manager->BindObjectToMemory("stagingBuffer", "hostVis&CohMemory") != VK_SUCCESS)
+	if (MemoryManager::manager->BindObjectToMemory("stagingBuffer", "hostVis&CohMemory", nullptr) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind stagingBuffer to hostVis&CohMemory!");
 	if (MemoryManager::manager->MapPhysicalMemory("hostVis&CohMemory", &mappedHostMemory) != VK_SUCCESS)
 		throw std::runtime_error("Failed to map hostVis&CohMemory!");

@@ -24,7 +24,7 @@ public:
 	MemoryAllocater(MemoryAllocater&& move) noexcept;
 	MemoryAllocater(const MemoryAllocater& copy) = delete;
 
-	MemoryInfo allocSubMemory(uint32_t subMemorySize, uint32_t alignment = 1U, uint32_t upperBound = 0U);
+	MemoryInfo allocSubMemory(uint32_t subMemorySize, uint32_t alignment = 1U, uint32_t upperBound = ~0U);
 	void freeSubMemory(const MemoryInfo& memoryPlace);
 private:
 	struct SubMemoryInfo : public MemoryInfo
@@ -50,7 +50,7 @@ public:
 	MemoryObject() = default;
 	MemoryObject(MemoryObject&& move) noexcept;
 	MemoryObject(const MemoryObject& copy) = delete;
-	MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, VkImageViewCreateInfo* viewInfo);
+	MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo);
 };
 
 class PhysicalMemory
@@ -74,14 +74,14 @@ public:
 	inline void deleteMemoryObject(std::string keyName) { memoryObjects.erase(keyName); }
 	inline void deletePhysicalMemory(std::string keyName) { physicalMemories.erase(keyName); }
 	inline void createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, std::string keyName) { physicalMemories.emplace(keyName, PhysicalMemory(typeFlag, size)); }
-	inline void createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, VkImageViewCreateInfo* viewInfo, std::string keyName) { memoryObjects.emplace(keyName, MemoryObject(bufferInfo, imageInfo, viewInfo)); }
+	inline void createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, std::string keyName) { memoryObjects.emplace(keyName, MemoryObject(bufferInfo, imageInfo)); }
 	_NODISCARD inline const MemoryObject& getMemoryObject(std::string keyName) { return memoryObjects[keyName]; }
 
 	void UnMapPhysicalMemory(std::string physicalKeyName);
 	VkResult MapPhysicalMemory(std::string physicalKeyName, void** pMemoryAccess);
 
 	void UnBindObjectFromMemory(std::string objectKeyName, std::string physicalKeyName);
-	VkResult BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName);
+	VkResult BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName, VkImageViewCreateInfo* viewInfo);
 
 	_NODISCARD MemoryAllocater::MemoryInfo allocMemory(std::string objectKeyName, uint32_t size, void** pMappedMemory = nullptr);
 	void freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo);

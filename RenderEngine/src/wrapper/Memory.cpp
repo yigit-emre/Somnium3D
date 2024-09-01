@@ -30,6 +30,9 @@ MemoryAllocater::MemoryInfo MemoryAllocater::allocSubMemory(uint32_t subMemorySi
 {
 	if (!pSubMemories)
 	{
+		if (upperBound < subMemorySize)
+			throw std::runtime_error("No available size in memory!");
+
 		pSubMemories = new SubMemoryInfo();
 		pSubMemories->endOffset = subMemorySize;
 		return { 0U, subMemorySize };
@@ -43,7 +46,7 @@ MemoryAllocater::MemoryInfo MemoryAllocater::allocSubMemory(uint32_t subMemorySi
 	newInfo->startOffset = (pTemp->endOffset + alignment - 1) & ~(alignment - 1);
 	newInfo->endOffset = newInfo->startOffset + subMemorySize;
 
-	if (upperBound && upperBound < newInfo->endOffset)
+	if (upperBound < newInfo->endOffset)
 		throw std::runtime_error("No available size in memory!");
 
 	newInfo->pNext = (pTemp->pNext) ? pTemp->pNext : nullptr;
@@ -83,7 +86,7 @@ memoryPlace(move.memoryPlace), memoryAllocater(std::move(move.memoryAllocater)),
 	move.imageView = VK_NULL_HANDLE;
 }
 
-MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, VkImageViewCreateInfo* viewInfo)
+MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo)
 {
 	if (bufferInfo)
 	{
@@ -96,10 +99,6 @@ MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* im
 		if (vkCreateImage(DEVICE, imageInfo, nullptr, &image) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create image!");
 		vkGetImageMemoryRequirements(DEVICE, image, &memoryRequirements);
-
-		viewInfo->image = image;
-		if (vkCreateImageView(DEVICE, viewInfo, nullptr, &imageView) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create imaged view!");
 	}
 }
 
@@ -159,14 +158,21 @@ void MemoryManager::UnBindObjectFromMemory(std::string objectKeyName, std::strin
 {
 	if (memoryObjects.find(objectKeyName) != memoryObjects.end() && physicalMemories.find(physicalKeyName) != physicalMemories.end())
 	{
+		MemoryObject& object = memoryObjects[objectKeyName];
 		physicalMemories[physicalKeyName].memoryAllocater.freeSubMemory(memoryObjects[objectKeyName].memoryPlace);
-		memoryObjects[objectKeyName].memoryPlace = { 0U, 0U };
+		object.memoryPlace = { 0U, 0U };
+
+		if (object.imageView)
+		{
+			vkDestroyImageView(DEVICE, object.imageView, nullptr);
+			object.imageView = VK_NULL_HANDLE;
+		}
 	}
 	else
 		throw std::runtime_error("Failed to find requested memory and memory object to unbind!");
 }
 
-VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName)
+VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName, VkImageViewCreateInfo* viewInfo)
 {
 	if (memoryObjects.find(objectKeyName) != memoryObjects.end() && physicalMemories.find(physicalKeyName) != physicalMemories.end())
 	{
@@ -175,10 +181,17 @@ VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::strin
 		if (object.memoryRequirements.memoryTypeBits & memory.memoryTypeBit)
 		{
 			object.memoryPlace = memory.memoryAllocater.allocSubMemory((uint32_t)object.memoryRequirements.size, (uint32_t)object.memoryRequirements.alignment, memory.totalMemorySize);
-			if (object.buffer)
-				return vkBindBufferMemory(DEVICE, object.buffer, memory.memory, object.memoryPlace.startOffset);
+
+			if (viewInfo)
+			{
+				viewInfo->image = object.image;
+				VkResult result = vkBindImageMemory(DEVICE, object.image, memory.memory, object.memoryPlace.startOffset);
+				if (vkCreateImageView(DEVICE, viewInfo, nullptr, &object.imageView) != VK_SUCCESS)
+					throw std::runtime_error("Failed to create imaged view!");
+				return result;
+			}
 			else
-				return vkBindImageMemory(DEVICE, object.image, memory.memory, object.memoryPlace.startOffset);
+				return vkBindBufferMemory(DEVICE, object.buffer, memory.memory, object.memoryPlace.startOffset);
 		}
 		else
 			throw std::runtime_error("Memory type bit does not match!");

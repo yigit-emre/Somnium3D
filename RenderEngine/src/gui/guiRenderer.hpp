@@ -50,5 +50,4 @@ private:
 	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
 	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
 	void updateUniforms(uint32_t currentImage, const glm::mat4& modelM);
-	void FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const;
 };

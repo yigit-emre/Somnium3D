@@ -12,14 +12,14 @@ RenderPlatform::~RenderPlatform()
 	glfwTerminate();
 }
 
-RenderPlatform::RenderPlatform(const RenderPlatformInfo& info, bool manuelSelection)
+RenderPlatform::RenderPlatform(const RenderPlatformInfo& info, bool manuelSelection) : windowWidth(info.windowWidth), windowHeight(info.windowHeight)
 {
-	InitLibs(info);
+	InitLibs(info.windowName);
 	SelectPhysicalDevice(manuelSelection, info);
 	CreateLogicalDevice(info);
 }
 
-void RenderPlatform::InitLibs(const RenderPlatformInfo& info)
+void RenderPlatform::InitLibs(const char* windowName)
 {
 	if (!glfwInit())
 		throw std::runtime_error("Failed to init glfw!");
@@ -27,16 +27,16 @@ void RenderPlatform::InitLibs(const RenderPlatformInfo& info)
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	if (info.windowWidth == 0 || info.windowHeight== 0) {
+	if (windowWidth == 0 || windowHeight== 0) {
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-		window = glfwCreateWindow(mode->width, mode->height, info.windowName, monitor, nullptr);
+		window = glfwCreateWindow(mode->width, mode->height, windowName, monitor, nullptr);
 
 		windowWidth = mode->width;
 		windowWidth = mode->height;
 	}
 	else
-		window = glfwCreateWindow(windowWidth, windowHeight, info.windowName, nullptr, nullptr);
+		window = glfwCreateWindow(windowWidth, windowHeight, windowName, nullptr, nullptr);
 
 	if (!window)
 		throw std::runtime_error("Invalid glfw window handle!");
@@ -181,8 +181,9 @@ void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlat
 			}
 		}
 		std::cout << std::endl;
-		printf_s("Enter your selection index: ");
-		scanf_s("%u", &index);
+		index = 1;  // TODO: delete it, '1' stands for local gtx1650ti.
+		/*printf_s("Enter your selection index: ");
+		scanf_s("%u", &index);*/ // TODO: Make them alive
 
 		if (index < physicalDeviceCount)
 			physicalDevice = currentDevices[index];
