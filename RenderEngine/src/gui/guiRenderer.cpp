@@ -19,6 +19,17 @@ commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatfor
 
 GUIRenderer::~GUIRenderer()
 {
+	for (uint32_t i = 0; i < swapchainObject.imageCount; i++)
+		vkDestroyFramebuffer(DEVICE, frameBuffers[i], nullptr);
+	delete[] frameBuffers;
+
+	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore(DEVICE, imageAvailableSemaphore[i], nullptr);
+		vkDestroySemaphore(DEVICE, renderFinishedSemaphore[i], nullptr);
+		vkDestroyFence(DEVICE, inFlightFence[i], nullptr);
+	}
+
 	vkDestroyFence(DEVICE, singleTimeFence, nullptr);
 	vkDestroySampler(DEVICE, textureSampler, nullptr);
 
@@ -32,7 +43,84 @@ GUIRenderer::~GUIRenderer()
 
 void GUIRenderer::Render()
 {
+	uint32_t currentFrame = 0;
+	uint32_t currentImageIndex = 0;
+	const VkDevice device = DEVICE;
+	GLFWwindow* glfwWindow = RenderPlatform::platform->window;
+	const VkQueue presentQueue = RenderPlatform::platform->presentQueue;
+	const VkQueue graphicsQueue = RenderPlatform::platform->graphicsQueue;
+	VkPipelineStageFlags  waitStage{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+	while (!glfwWindowShouldClose(glfwWindow))
+	{
+		glfwPollEvents();
+
+		vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
+		vkResetFences(device, 1, &inFlightFence[currentFrame]);
+
+		vkAcquireNextImageKHR(device, swapchainObject.swapchain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &currentImageIndex);
+
+		vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+		RecordCommandBuffer(commandBuffers[currentFrame], currentImageIndex, currentFrame);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = imageAvailableSemaphore + currentFrame;
+		submitInfo.pWaitDstStageMask = &waitStage;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = commandBuffers + currentFrame;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = renderFinishedSemaphore + currentFrame;
+
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence[currentFrame]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to submit gui queue work!");
+
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = renderFinishedSemaphore + currentFrame;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &swapchainObject.swapchain;
+		presentInfo.pImageIndices = &currentImageIndex;
+
+		vkQueuePresentKHR(presentQueue, &presentInfo);
+		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
+	}
+	vkDeviceWaitIdle(device);
+}
+
+void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame)
+{
+	VkCommandBufferBeginInfo commandBufferBeginInfo;
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	if (vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo) != VK_SUCCESS)
+		throw std::runtime_error("Failed to begin gui commandBuffer!");
+
+	VkClearValue clearValue{ 0.0f, 0.0f, 0.0f, 1.0f };
+	VkRenderPassBeginInfo renderPassBeginInfo;
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = renderPass;
+	renderPassBeginInfo.framebuffer = frameBuffers[currentImageIndex];
+	renderPassBeginInfo.renderArea.extent = swapchainObject.swapchainExtent;
+	renderPassBeginInfo.renderArea.offset = { 0,0 };
+	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.pClearValues = &clearValue;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+	static const VkBuffer vertexBuffer = MemoryManager::manager->getMemoryObject("widgetVertexBuffer").buffer;
+	VkDeviceSize offsets{ 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offsets);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, descriptorSets + currentFrame, 0, nullptr);
+	vkCmdDraw(commandBuffer, MeshLoader::WidgetVertex::getWidgetVertexCount(), 1, 0, 0);
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Failed to end gui commandBuffer!");
 }
 
 void GUIRenderer::CreateDescriptors()
@@ -132,8 +220,8 @@ void GUIRenderer::BuildGraphicsPipeline()
 	if (vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Pipeline layout!");
 
-	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("shaders\\gui.vert");
-	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("shaders\\gui.frag");
+	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("shaders\\guiVert.spv");
+	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("shaders\\guiFrag.spv");
 
 	VkPipelineShaderStageCreateInfo shaderStageInfo[2]{};
 	shaderStageInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -220,6 +308,21 @@ void GUIRenderer::BuildGraphicsPipeline()
 	}
 	vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
 	vkDestroyShaderModule(DEVICE, fragmentShaderModule, nullptr);
+
+	frameBuffers = new VkFramebuffer[swapchainObject.imageCount];
+	VkFramebufferCreateInfo frameBufferCreateInfo{};
+	frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	frameBufferCreateInfo.renderPass = renderPass;
+	frameBufferCreateInfo.attachmentCount = 1;
+	frameBufferCreateInfo.width = swapchainObject.swapchainExtent.width;
+	frameBufferCreateInfo.height = swapchainObject.swapchainExtent.height;
+	frameBufferCreateInfo.layers = 1;
+	for (uint32_t i = 0; i < swapchainObject.imageCount; i++)
+	{
+		frameBufferCreateInfo.pAttachments = &swapchainObject.imageViews[i];
+		if (vkCreateFramebuffer(DEVICE, &frameBufferCreateInfo, nullptr, &frameBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create gui framebuffer!");
+	}
 }
 
 void GUIRenderer::FixedPipelineStages(VkGraphicsPipelineCreateInfo& pipelineCreateInfo) const
@@ -359,7 +462,8 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(RenderPlatform::platform->graphicsQueue, 1, &submitInfo, singleTimeFence);
+	if (vkQueueSubmit(RenderPlatform::platform->graphicsQueue, 1, &submitInfo, singleTimeFence) != VK_SUCCESS)
+		throw std::runtime_error("Failed to submit gui single time queue work!");
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
@@ -443,6 +547,8 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
 	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
 	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &swapchainObject.projM, sizeof(glm::mat4));
+	updateUniforms(0, glm::mat4(1.0f)); //TODO: Remove it
+	updateUniforms(0, glm::mat4(1.0f));	//TODO: Remove it
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};

@@ -175,8 +175,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
-    <None Include="shaders\gui.frag" />
-    <None Include="shaders\gui.vert" />
+    <None Include="shaders\guiFrag.frag" />
+    <None Include="shaders\guiFrag.spv" />
+    <None Include="shaders\guiVert.spv" />
+    <None Include="shaders\guiVert.vert" />
     <None Include="shaders\SpirVCompiler.bat" />
   </ItemGroup>
   <ItemGroup>

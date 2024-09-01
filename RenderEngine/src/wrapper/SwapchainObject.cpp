@@ -131,6 +131,8 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 
 SwapchainObject::~SwapchainObject()
 {
+	vkDestroySwapchainKHR(DEVICE, swapchain, nullptr);
+
 	if (images)
 		delete[] images;
 
@@ -140,7 +142,6 @@ SwapchainObject::~SwapchainObject()
 			vkDestroyImageView(DEVICE, imageViews[i], nullptr);
 		delete[] imageViews;
 	}
-	vkDestroySwapchainKHR(DEVICE, swapchain, nullptr);
 }
 
 SwapchainObject::SwapchainObject(SwapchainObject&& move) noexcept : swapchain(move.swapchain), images(move.images), imageViews(move.imageViews),

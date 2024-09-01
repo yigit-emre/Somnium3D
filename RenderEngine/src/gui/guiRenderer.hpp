@@ -14,6 +14,7 @@ public:
 
 
 	void Render();
+	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame);
 private:
 	struct SingleTimeCommandsInfo
 	{
@@ -30,6 +31,7 @@ private:
 	SwapchainObject swapchainObject;
 	CommandPoolObject commandPoolObject;
 	VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
+	VkFramebuffer* frameBuffers;
 
 	VkFence singleTimeFence;
 	VkFence inFlightFence[FRAMES_IN_FLIGHT];

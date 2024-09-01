@@ -80,8 +80,10 @@
     <None Include="shaders\SpirVCompiler.bat">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="shaders\gui.frag" />
-    <None Include="shaders\gui.vert" />
+    <None Include="shaders\guiFrag.frag" />
+    <None Include="shaders\guiVert.vert" />
+    <None Include="shaders\guiFrag.spv" />
+    <None Include="shaders\guiVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\fontBitMap.png">

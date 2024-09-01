@@ -5,7 +5,9 @@ layout(location = 0) out vec4 FragColor;
 
 //push constant for widgetTypeIndex
 
+layout(binding = 1) uniform sampler2D textureSampler;
+
 void main() 
 {
-
+	FragColor = texture(textureSampler, outTextCoords);
 }

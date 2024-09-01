@@ -7,9 +7,9 @@
 struct AppWindowCreateInfo;
 struct RenderPlatformInfo
 {
-	uint32_t windowWidth{ 1200 };
-	uint32_t windowHeight{ 900 };
-	const char* windowName{"Somnium3D"};
+	uint32_t windowWidth;
+	uint32_t windowHeight;
+	const char* windowName;
 
 	const char** extensions{};
 	uint32_t extensionCount{ 0 };

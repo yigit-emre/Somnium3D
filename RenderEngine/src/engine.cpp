@@ -17,6 +17,10 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	const char* extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	RenderPlatformInfo platformInfo{};
+	platformInfo.windowWidth = winInfo.windowWidth;
+	platformInfo.windowHeight = winInfo.windowHeight;
+	platformInfo.windowName = winInfo.windowName;
+
 	platformInfo.extensionCount = 1;
 	platformInfo.extensions = extensions;
 	platformInfo.features.samplerAnisotropy = VK_TRUE;
@@ -24,6 +28,8 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	RenderPlatform::platform = new RenderPlatform(platformInfo, true);
 	CreateMemories();
 	guiRenderer = new GUIRenderer();
+
+	guiRenderer->Render(); // TODO: Test
 }
 
 S3D_API void s3DTerminateRenderEngine()
