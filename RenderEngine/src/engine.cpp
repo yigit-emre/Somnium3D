@@ -44,12 +44,13 @@ S3D_API void s3DTerminateRenderEngine()
 static void CreateMemories()
 {
 	MemoryManager::manager = new MemoryManager();
-	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, S3D_SIZE_KB * 10, "deviceLocalMemory");
-	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, S3D_SIZE_KB * 10, "hostVis&CohMemory");
+	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, S3D_SIZE_KB * 15, "deviceLocalMemory");
+	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, S3D_SIZE_KB * 15, "hostVis&CohMemory");
+
 
 	VkBufferCreateInfo bufferCreateInfo{};
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = S3D_SIZE_KB * 5;
+	bufferCreateInfo.size = S3D_SIZE_KB * 10;
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, "stagingBuffer");
