@@ -547,8 +547,8 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
 	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
 	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &swapchainObject.projM, sizeof(glm::mat4));
-	updateUniforms(0, glm::scale(glm::mat4(1.0f), glm::vec3(500.0f, 500.0f, 0.0f))); //TODO: Remove it
-	updateUniforms(1, glm::scale(glm::mat4(1.0f), glm::vec3(500.0f, 500.0f, 0.0f))); //TODO: Remove it
+	updateUniforms(0, glm::scale(glm::mat4(1.0f), glm::vec3(400.0f, 600.0f, 0.0f))); //TODO: Remove it
+	updateUniforms(1, glm::scale(glm::mat4(1.0f), glm::vec3(400.0f, 600.0f, 0.0f))); //TODO: Remove it
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};
