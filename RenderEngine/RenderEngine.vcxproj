@@ -125,6 +125,9 @@
     <PostBuildEvent>
       <Command>copy /y /d  "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\$(ProjectName).dll" "$(SolutionDir)bin\Application\$(Platform)\$(Configuration)\"</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>start D:\visualDEV\Somnium3D\RenderEngine\shaders\SpirVCompiler.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -176,8 +179,6 @@
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="shaders\guiFrag.frag" />
-    <None Include="shaders\guiFrag.spv" />
-    <None Include="shaders\guiVert.spv" />
     <None Include="shaders\guiVert.vert" />
     <None Include="shaders\SpirVCompiler.bat" />
   </ItemGroup>

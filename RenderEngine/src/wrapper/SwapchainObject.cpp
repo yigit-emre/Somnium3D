@@ -1,7 +1,7 @@
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "glm/gtc/matrix_transform.hpp"
 #include "..\RenderPlatform.hpp"
 #include "SwapchainObject.hpp"
-#include "Memory.hpp"
 #include <stdexcept>
 #include <vector>
 
@@ -124,9 +124,10 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	}
 
 	if (isProjMOrtho)
-		projM = glm::ortho(0.0f, static_cast<float>(swapchainExtent.width), 0.0f, static_cast<float>(swapchainExtent.height));
+		projM = glm::ortho(-static_cast<float>(swapchainExtent.width) / 2.0f, static_cast<float>(swapchainExtent.width) / 2.0f, -static_cast<float>(swapchainExtent.height) / 2.0f,static_cast<float>(swapchainExtent.height) / 2.0f);
 	else
 		projM = glm::perspective(glm::radians(45.0f), static_cast<float>(swapchainExtent.width) / static_cast<float>(swapchainExtent.height), 0.1f, 50.0f);
+	projM[1][1] *= -1;
 }
 
 SwapchainObject::~SwapchainObject()

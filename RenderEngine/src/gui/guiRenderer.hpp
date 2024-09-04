@@ -49,5 +49,5 @@ private:
 	void BuildGraphicsPipeline();
 	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
 	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
-	void updateUniforms(uint32_t currentImage, const glm::mat4& modelM);
+	void updateUniforms(uint32_t currentFrame, const glm::mat4& modelM);
 };

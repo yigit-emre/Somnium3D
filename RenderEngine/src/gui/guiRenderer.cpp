@@ -58,7 +58,8 @@ void GUIRenderer::Render()
 		vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
 		vkResetFences(device, 1, &inFlightFence[currentFrame]);
 
-		vkAcquireNextImageKHR(device, swapchainObject.swapchain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &currentImageIndex);
+		if (vkAcquireNextImageKHR(device, swapchainObject.swapchain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &currentImageIndex) != VK_SUCCESS)
+			throw std::runtime_error("Failed to acquire gui swapchain image!");
 
 		vkResetCommandBuffer(commandBuffers[currentFrame], 0);
 		RecordCommandBuffer(commandBuffers[currentFrame], currentImageIndex, currentFrame);
@@ -84,7 +85,8 @@ void GUIRenderer::Render()
 		presentInfo.pSwapchains = &swapchainObject.swapchain;
 		presentInfo.pImageIndices = &currentImageIndex;
 
-		vkQueuePresentKHR(presentQueue, &presentInfo);
+		if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
+			throw std::runtime_error("Failed to presnet gui swapchain image!");
 		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 	vkDeviceWaitIdle(device);
@@ -256,8 +258,8 @@ void GUIRenderer::BuildGraphicsPipeline()
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)swapchainObject.swapchainExtent.width;
-	viewport.height = (float)swapchainObject.swapchainExtent.height;
+	viewport.width = static_cast<float>(swapchainObject.swapchainExtent.width);
+	viewport.height = static_cast<float>(swapchainObject.swapchainExtent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
@@ -545,8 +547,8 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
 	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
 	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &swapchainObject.projM, sizeof(glm::mat4));
-	updateUniforms(0, glm::mat4(1.0f)); //TODO: Remove it
-	updateUniforms(0, glm::mat4(1.0f));	//TODO: Remove it
+	updateUniforms(0, glm::scale(glm::mat4(1.0f), glm::vec3(500.0f, 500.0f, 0.0f))); //TODO: Remove it
+	updateUniforms(1, glm::scale(glm::mat4(1.0f), glm::vec3(500.0f, 500.0f, 0.0f))); //TODO: Remove it
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};
@@ -587,9 +589,9 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	}
 }
 
-void GUIRenderer::updateUniforms(uint32_t currentImage, const glm::mat4& modelM)
+void GUIRenderer::updateUniforms(uint32_t currentFrame, const glm::mat4& modelM)
 {
 	//TODO: Adjust projM for run-time resizing!
 	static char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset + sizeof(glm::mat4);
-	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2 * currentImage), &modelM, sizeof(glm::mat4));
+	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2 * currentFrame), &modelM, sizeof(glm::mat4));
 }

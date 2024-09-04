@@ -14,3 +14,7 @@ Failed to allocate physical memory!
 -1000072003
 -----------------------------------------------
 -1000072003
+-----------------------------------------------
+Failed to acquire gui swapchain image!
+-----------------------------------------------
+Failed to acquire gui swapchain image!

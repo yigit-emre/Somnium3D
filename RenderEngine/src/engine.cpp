@@ -29,6 +29,7 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	CreateMemories();
 	guiRenderer = new GUIRenderer();
 
+
 	guiRenderer->Render(); // TODO: Test
 }
 

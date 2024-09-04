@@ -129,14 +129,8 @@ PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : 
 		if ((memProperties.memoryTypes[i].propertyFlags & typeFlag) == typeFlag)
 		{
 			allocInfo.memoryTypeIndex = i;
-			/*if (vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory) != VK_SUCCESS)
-				throw std::runtime_error("Failed to allocate physical memory!");*/
-
-			VkResult result = vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory);
-			if (result != VK_SUCCESS)
-				throw std::runtime_error(std::to_string(result));
-
-
+			if (vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+				throw std::runtime_error("Failed to allocate physical memory!");
 			memoryTypeBit = 1 << i;
 			return;
 		}

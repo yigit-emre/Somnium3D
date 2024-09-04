@@ -21,7 +21,7 @@ void CommandPoolObject::allocCommandBuffers(bool isPrimary, uint32_t commandBuff
 	allocInfo.level = isPrimary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	allocInfo.commandBufferCount = commandBufferCount;
 
-	if (vkAllocateCommandBuffers(DEVICE, &allocInfo, pCommandBuffers))
+	if (vkAllocateCommandBuffers(DEVICE, &allocInfo, pCommandBuffers) != VK_SUCCESS)
 		throw std::runtime_error("Failed to alloc commandBuffer!");
 }
 

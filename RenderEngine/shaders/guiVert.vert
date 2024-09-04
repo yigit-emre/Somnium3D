@@ -7,9 +7,8 @@ layout(location = 0) out vec2 outTextCoords;
 
 layout(binding = 0) uniform UniformBufferObject 
 {
-	mat4 modelM;
 	mat4 projM;
-
+	mat4 modelM;
 } ubo;
 
 void main() 

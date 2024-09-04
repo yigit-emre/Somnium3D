@@ -1,7 +1,8 @@
 #include "RenderPlatform.hpp"
 #include <stdexcept>
-#include <iostream>
 #include <vector>
+
+#define LOCAL_GTX_16050_TI
 
 RenderPlatform::~RenderPlatform()
 {
@@ -76,7 +77,7 @@ void RenderPlatform::InitLibs(const char* windowName)
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "s3DRenderer";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 1, 0);
 
 	VkInstanceCreateInfo instanceInfo{};
 	instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -87,7 +88,7 @@ void RenderPlatform::InitLibs(const char* windowName)
 #else
 	instanceInfo.enabledLayerCount = 0;
 	instanceInfo.ppEnabledLayerNames = nullptr;
-#endif // _DEBUGR
+#endif // _DEBUG
 	instanceInfo.enabledExtensionCount = glfwExtensionCount;
 	instanceInfo.ppEnabledExtensionNames = glfwExtensions;
 
@@ -169,7 +170,18 @@ void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlat
 	std::vector<VkPhysicalDevice> currentDevices(physicalDeviceCount);
 	vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, currentDevices.data());
 
-	if (manuelSelection) {
+	if (manuelSelection) 
+	{
+#ifdef LOCAL_GTX_16050_TI
+		VkPhysicalDeviceProperties deviceProperties;
+		for (uint32_t i = 0; i < physicalDeviceCount; i++)
+		{
+			vkGetPhysicalDeviceProperties(currentDevices[i], &deviceProperties);
+			if (deviceProperties.deviceID == 8085) // '8085' is the id of local gtx1650ti
+				physicalDevice = currentDevices[i];
+		}
+#else
+#include <iostream>
 		uint32_t index = 0;
 		std::cout << "Suitable GPUs:\n";
 		VkPhysicalDeviceProperties deviceProperties;
@@ -181,14 +193,14 @@ void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlat
 			}
 		}
 		std::cout << std::endl;
-		index = 1;  // TODO: delete it, '1' stands for local gtx1650ti.
-		/*printf_s("Enter your selection index: ");
-		scanf_s("%u", &index);*/ // TODO: Make them alive
+		printf_s("Enter your selection index: ");
+		scanf_s("%u", &index);
 
 		if (index < physicalDeviceCount)
 			physicalDevice = currentDevices[index];
 		else
 			throw std::runtime_error("Invalid selection index!");
+#endif // LOCAL_GTX_16050_TI
 	}
 	else {
 		for (uint32_t i = 0; i < physicalDeviceCount; i++)
