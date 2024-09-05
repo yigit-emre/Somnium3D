@@ -10,8 +10,8 @@ layout(binding = 0, std140) uniform UniformBufferObject
 	mat4 projM;
 	mat4 modelM;
 
-	float strLenght;
-	vec2 charOffsets[40];
+	uint strLenght;
+	uint packedstrData[10];
 
 } ubo;
 

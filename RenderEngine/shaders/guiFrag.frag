@@ -1,9 +1,7 @@
-#version 450 
+#version 450
 
 layout(location = 0) in vec2 outTextCoords;
 layout(location = 0) out vec4 FragColor;
-
-//push constant for widgetTypeIndex
 
 layout(binding = 1) uniform sampler2D textureSampler;
 
@@ -12,21 +10,29 @@ layout(binding = 0, std140) uniform UniformBufferObject
 	mat4 projM;
 	mat4 modelM;
 
-	float strLenght;
-	vec2 charOffsets[40];
+	uint strLenght;
+	uint packedstrData[10];
 } ubo;
 
 
+
+vec4 fontRendering() 
+{
+	uint charIndex = uint(outTextCoords.x * float(ubo.strLenght));
+	uint packedIndex = uint(charIndex / 2);
+	vec2 texCoords = vec2(outTextCoords.x - charIndex / ubo.strLenght, outTextCoords.y);
+	texCoords += vec2(float(((ubo.packedstrData[packedIndex] >> (charIndex % 2) * 16) & 0xFF)), float(((ubo.packedstrData[packedIndex] >> (charIndex % 2) * 16 + 8) & 0xFF)));
+	return vec4(1.0, 1.0, 1.0, 1.0) * texture(textureSampler,  texCoords).r;
+}
 
 void main() 
 {
 	if(ubo.strLenght > 0) 
 	{
-		uint charIndex = uint(outTextCoords * ubo.strLenght);
-		FragColor = vec4(1.0, 1.0, 1.0, 1.0) * texture(textureSampler,  ubo.charOffsets[charIndex] + outTextCoords).r;
+		FragColor = fontRendering();
 	}
 	else 
 	{
-		FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+		FragColor = vec4(0.0, 1.0, 1.0, 1.0);
 	}
 }
