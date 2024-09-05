@@ -82,6 +82,8 @@
     </None>
     <None Include="shaders\guiFrag.frag" />
     <None Include="shaders\guiVert.vert" />
+    <None Include="shaders\guiFrag.spv" />
+    <None Include="shaders\guiVert.spv" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\fontBitmap.png">

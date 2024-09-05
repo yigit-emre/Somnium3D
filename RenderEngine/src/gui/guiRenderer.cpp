@@ -1,10 +1,8 @@
+#include <stdexcept>
+#include "..\FileIO.hpp"
 #include "guiRenderer.hpp"
 #include "..\RenderPlatform.hpp"
-#include "..\wrapper\CommandBufferObject.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "..\FileIO.hpp"
-#include "stb_image.h"
-#include <stdexcept>
+
 
 GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR, true, false), 
 commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex) 
@@ -131,7 +129,7 @@ void GUIRenderer::CreateDescriptors()
 	layoutBindings[0].binding = 0;
 	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBindings[0].descriptorCount = 1;
-	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	layoutBindings[1].binding = 1;
 	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -473,23 +471,19 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 {
 	/************* Font Image Creation *************/
-	int width, height, channel;
-	if (stbi_uc* pixels = stbi_load("D:\\visualDEV\\Somnium3D\\RenderEngine\\resources\\fontBitmap.png", &width, &height, &channel, 1))
-	{
-		void* data = mappedHostMemory;
-		stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", static_cast<uint32_t>(width * height * 1), &data); // '1' stands for desired channel
-		memcpy(data, pixels, static_cast<uint64_t>(width * height * 1)); // '1' stands for desired channel
-		stbi_image_free(pixels);
-	}
-	else 
-		throw std::runtime_error("Failed to load fontBitmap texture!");
-		
+	ImageLoader::ImageInfo fontBitMapInfo{};
+	ImageLoader::stbiImageLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\resources\\fontBitmap.png", fontBitMapInfo, 1);
+
+	void* data = mappedHostMemory;
+	stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel, &data);
+	memcpy(data, fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
+	ImageLoader::freeImage(fontBitMapInfo);		
 
 	VkImageCreateInfo fontImageInfo{};
 	fontImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	fontImageInfo.imageType = VK_IMAGE_TYPE_2D;
 	fontImageInfo.format = VK_FORMAT_R8_UNORM;
-	fontImageInfo.extent = { static_cast<uint32_t>(width),  static_cast<uint32_t>(height),  1U };
+	fontImageInfo.extent = { fontBitMapInfo.width,  fontBitMapInfo.height,  1U };
 	fontImageInfo.mipLevels = 1;
 	fontImageInfo.arrayLayers = 1;
 	fontImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -536,7 +530,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	/************* Uniform Buffer Creation *************/
 	VkBufferCreateInfo uniformBufferCreateInfo{};
 	uniformBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	uniformBufferCreateInfo.size = sizeof(glm::mat4) * 2 * 2;
+	uniformBufferCreateInfo.size = static_cast<uint64_t>(UNIFORM_BUFFER_SIZE * 2);
 	uniformBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	uniformBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -546,9 +540,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 
 	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
 	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
-	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2), &swapchainObject.projM, sizeof(glm::mat4));
-	updateUniforms(0, glm::scale(glm::mat4(1.0f), glm::vec3(400.0f, 600.0f, 0.0f))); //TODO: Remove it
-	updateUniforms(1, glm::scale(glm::mat4(1.0f), glm::vec3(400.0f, 600.0f, 0.0f))); //TODO: Remove it
+	memcpy(static_cast<void*>(dst + UNIFORM_BUFFER_SIZE), &swapchainObject.projM, sizeof(glm::mat4));
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};
@@ -561,7 +553,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	if (MemoryManager::manager->BindObjectToMemory("widgetVertexBuffer", "deviceLocalMemory", nullptr) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind widgetVertexBuffer to deviceLocalMemory!");
 
-	void* data = mappedHostMemory;
+	data = mappedHostMemory;
 	stCommandsInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), &data);
 	MeshLoader::WidgetVertex widgetVertices[MeshLoader::WidgetVertex::getWidgetVertexCount()];
 	MeshLoader::WidgetVertexLoader(widgetVertices);
@@ -587,11 +579,4 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 			vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create gui syncObjects!");
 	}
-}
-
-void GUIRenderer::updateUniforms(uint32_t currentFrame, const glm::mat4& modelM)
-{
-	//TODO: Adjust projM for run-time resizing!
-	static char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset + sizeof(glm::mat4);
-	memcpy(static_cast<void*>(dst + sizeof(glm::mat4) * 2 * currentFrame), &modelM, sizeof(glm::mat4));
 }

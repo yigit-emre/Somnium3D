@@ -5,10 +5,14 @@ layout(location = 1) in vec2 texCoords;
 
 layout(location = 0) out vec2 outTextCoords;
 
-layout(binding = 0) uniform UniformBufferObject 
+layout(binding = 0, std140) uniform UniformBufferObject 
 {
 	mat4 projM;
 	mat4 modelM;
+
+	float strLenght;
+	vec2 charOffsets[40];
+
 } ubo;
 
 void main() 

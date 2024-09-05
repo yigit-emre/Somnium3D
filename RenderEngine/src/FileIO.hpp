@@ -10,7 +10,6 @@ namespace ShaderLoader
 	//TODO: Add pipeline cache
 }
 
-
 namespace MeshLoader
 {
 	struct WidgetVertex
@@ -27,4 +26,19 @@ namespace MeshLoader
 	};
 
 	void WidgetVertexLoader(WidgetVertex* pVertices);
+}
+
+namespace ImageLoader
+{
+	struct ImageInfo
+	{
+		uint32_t width;
+		uint32_t height;
+		uint32_t channel;
+
+		unsigned char* pixels{ nullptr };
+	};
+
+	void stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel);
+	void freeImage(ImageInfo& info);
 }

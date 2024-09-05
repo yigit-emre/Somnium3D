@@ -1,5 +1,5 @@
 #pragma once
-#include "core.hpp"
+#include "widget.hpp"
 #include "..\wrapper\Memory.hpp"
 #include "..\wrapper\SwapchainObject.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
@@ -49,5 +49,4 @@ private:
 	void BuildGraphicsPipeline();
 	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
 	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
-	void updateUniforms(uint32_t currentFrame, const glm::mat4& modelM);
 };

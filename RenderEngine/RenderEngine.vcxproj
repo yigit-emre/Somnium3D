@@ -180,6 +180,8 @@
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="shaders\guiFrag.frag" />
+    <None Include="shaders\guiFrag.spv" />
+    <None Include="shaders\guiVert.spv" />
     <None Include="shaders\guiVert.vert" />
     <None Include="shaders\SpirVCompiler.bat" />
   </ItemGroup>

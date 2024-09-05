@@ -1,7 +1,7 @@
 #pragma once
-#include "vulkan/vulkan.h"
 #include <string>
 #include <unordered_map>
+#include "vulkan/vulkan.h"
 
 #define S3D_SIZE_KB 1000U
 #define S3D_SIZE_MB 1000000U
@@ -71,6 +71,11 @@ public:
 class MemoryManager
 {
 public:
+	MemoryManager() = default;
+	~MemoryManager() = default;
+	MemoryManager(const MemoryManager& copy) = delete;
+	MemoryManager(MemoryManager&& move) noexcept = delete;
+
 	inline void deleteMemoryObject(std::string keyName) { memoryObjects.erase(keyName); }
 	inline void deletePhysicalMemory(std::string keyName) { physicalMemories.erase(keyName); }
 	inline void createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, std::string keyName) { physicalMemories.emplace(keyName, PhysicalMemory(typeFlag, size)); }
@@ -88,14 +93,6 @@ public:
 
 	static MemoryManager* manager;
 private:
-	MemoryManager() = default;
-	~MemoryManager() = default;
-	MemoryManager(const MemoryManager& copy) = delete;
-	MemoryManager(MemoryManager&& move) noexcept = delete;
-
 	std::unordered_map<std::string, MemoryObject> memoryObjects;
 	std::unordered_map<std::string, PhysicalMemory> physicalMemories;
-
-	friend static void CreateMemories();
-	friend void s3DTerminateRenderEngine();
 };
