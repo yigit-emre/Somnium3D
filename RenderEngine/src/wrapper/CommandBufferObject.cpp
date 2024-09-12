@@ -1,19 +1,17 @@
 #include "CommandBufferObject.hpp"
 #include "..\RenderPlatform.hpp"
-#include <stdexcept>
 
-CommandPoolObject::CommandPoolObject(VkCommandPoolCreateFlagBits flag, uint32_t queueFamilyIndex)
+s3DResult CommandPoolObject::createCommandPool(VkCommandPoolCreateFlagBits flag, uint32_t queueFamilyIndex)
 {
 	VkCommandPoolCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	createInfo.flags = flag;
 	createInfo.queueFamilyIndex = queueFamilyIndex;
 
-	if (vkCreateCommandPool(DEVICE, &createInfo, nullptr, &commandPool) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create commandPool!");
+	return s3DResult::S3D_RESULT_SUCCESS | vkCreateCommandPool(DEVICE, &createInfo, nullptr, &commandPool);
 }
 
-void CommandPoolObject::allocCommandBuffers(bool isPrimary, uint32_t commandBufferCount, VkCommandBuffer* pCommandBuffers)
+s3DResult CommandPoolObject::allocCommandBuffers(bool isPrimary, uint32_t commandBufferCount, VkCommandBuffer* pCommandBuffers)
 {
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -21,8 +19,7 @@ void CommandPoolObject::allocCommandBuffers(bool isPrimary, uint32_t commandBuff
 	allocInfo.level = isPrimary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	allocInfo.commandBufferCount = commandBufferCount;
 
-	if (vkAllocateCommandBuffers(DEVICE, &allocInfo, pCommandBuffers) != VK_SUCCESS)
-		throw std::runtime_error("Failed to alloc commandBuffer!");
+	return s3DResult::S3D_RESULT_SUCCESS | vkAllocateCommandBuffers(DEVICE, &allocInfo, pCommandBuffers);
 }
 
 void CommandPoolObject::freeCommandBuffers(uint32_t commandBufferCount, VkCommandBuffer* pCommandBuffers)

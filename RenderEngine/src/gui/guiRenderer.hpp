@@ -18,34 +18,34 @@ private:
 	struct SingleTimeCommandInfo
 	{
 		VkExtent3D imageExtent;
-		MemoryAllocater::MemoryInfo fontImageStagingMemoryInfo;
-		MemoryAllocater::MemoryInfo vertexBufferStagingMemoryInfo;
 	};
 
 private:
 	VkPipeline pipeline;
-	VkPipelineLayout pipelineLayout;
 	VkRenderPass renderPass;
+	VkPipelineLayout pipelineLayout;
 
 	SwapchainObject swapchainObject;
 	CommandPoolObject commandPoolObject;
-	VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
+
 	VkFramebuffer* frameBuffers;
+	VkCommandBuffer commandBuffer;
 
 	VkFence singleTimeFence;
-	VkFence inFlightFence[FRAMES_IN_FLIGHT];
-	VkSemaphore imageAvailableSemaphore[FRAMES_IN_FLIGHT];
-	VkSemaphore renderFinishedSemaphore[FRAMES_IN_FLIGHT];
+	VkFence inFlightFence;
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderFinishedSemaphore;
 
+	VkDescriptorSet descriptorSet;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet descriptorSets[FRAMES_IN_FLIGHT];
 
+	void* mappedHostMemory;
 	VkSampler textureSampler;
 
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
 	void CreateResouces(SingleTimeCommandInfo& stInfo);
 	void SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const;
-	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame);
+	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex);
 };

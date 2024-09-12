@@ -1,17 +1,19 @@
-#include <stdexcept>
 #include "..\FileIO.hpp"
 #include "guiRenderer.hpp"
 #include "..\RenderPlatform.hpp"
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR, true, false), 
-commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex) 
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR) 
 {
+	s3DAssert(commandPoolObject.createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create gui commandPool!");
+
 	SingleTimeCommandInfo stInfo{};
 	CreateResouces(stInfo);
 	CreateDescriptors();
 	BuildGraphicsPipeline();
 
 	SingleTimeCommands(stInfo);
+
+
 }
 
 GUIRenderer::~GUIRenderer()
@@ -20,12 +22,9 @@ GUIRenderer::~GUIRenderer()
 		vkDestroyFramebuffer(DEVICE, frameBuffers[i], nullptr);
 	delete[] frameBuffers;
 
-	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-	{
-		vkDestroySemaphore(DEVICE, imageAvailableSemaphore[i], nullptr);
-		vkDestroySemaphore(DEVICE, renderFinishedSemaphore[i], nullptr);
-		vkDestroyFence(DEVICE, inFlightFence[i], nullptr);
-	}
+	vkDestroySemaphore(DEVICE, imageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(DEVICE, renderFinishedSemaphore, nullptr);
+	vkDestroyFence(DEVICE, inFlightFence, nullptr);
 
 	vkDestroyFence(DEVICE, singleTimeFence, nullptr);
 	vkDestroySampler(DEVICE, textureSampler, nullptr);
@@ -40,59 +39,55 @@ GUIRenderer::~GUIRenderer()
 
 void GUIRenderer::Render()
 {
-	uint32_t currentFrame = 0;
-	uint32_t currentImageIndex = 0;
 	const VkDevice device = DEVICE;
+	uint32_t currentImageIndex = 0U;
 	GLFWwindow* glfwWindow = RenderPlatform::platform->window;
 	const VkQueue presentQueue = RenderPlatform::platform->presentQueue;
 	const VkQueue graphicsQueue = RenderPlatform::platform->graphicsQueue;
 	VkPipelineStageFlags  waitStage{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1U;
+	submitInfo.pWaitSemaphores = &imageAvailableSemaphore;
+	submitInfo.pWaitDstStageMask = &waitStage;
+	submitInfo.commandBufferCount = 1U;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	submitInfo.signalSemaphoreCount = 1U;
+	submitInfo.pSignalSemaphores = &renderFinishedSemaphore;
+
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1U;
+	presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
+	presentInfo.swapchainCount = 1U;
+	presentInfo.pSwapchains = &swapchainObject.swapchain;
+	presentInfo.pImageIndices = &currentImageIndex;
+
 	while (!glfwWindowShouldClose(glfwWindow))
 	{
 		glfwPollEvents();
 
-		vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
-		vkResetFences(device, 1, &inFlightFence[currentFrame]);
+		vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+		vkResetFences(device, 1, &inFlightFence);
 
-		if (vkAcquireNextImageKHR(device, swapchainObject.swapchain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &currentImageIndex) != VK_SUCCESS)
+		if (vkAcquireNextImageKHR(device, swapchainObject.swapchain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &currentImageIndex) != VK_SUCCESS)
 			throw std::runtime_error("Failed to acquire gui swapchain image!");
 
-		vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-		RecordCommandBuffer(commandBuffers[currentFrame], currentImageIndex, currentFrame);
+		vkResetCommandBuffer(commandBuffer, 0);
+		RecordCommandBuffer(commandBuffer, currentImageIndex);
 
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = imageAvailableSemaphore + currentFrame;
-		submitInfo.pWaitDstStageMask = &waitStage;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = commandBuffers + currentFrame;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = renderFinishedSemaphore + currentFrame;
-
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence[currentFrame]) != VK_SUCCESS)
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS)
 			throw std::runtime_error("Failed to submit gui queue work!");
-
-		VkPresentInfoKHR presentInfo{};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = renderFinishedSemaphore + currentFrame;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &swapchainObject.swapchain;
-		presentInfo.pImageIndices = &currentImageIndex;
 
 		if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
 			throw std::runtime_error("Failed to presnet gui swapchain image!");
-		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 	vkDeviceWaitIdle(device);
 }
 
-void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame)
+void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex)
 {
-
-
 	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -112,11 +107,11 @@ void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t cu
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-	static const VkBuffer vertexBuffer = MemoryManager::manager->getMemoryObject("widgetVertexBuffer").buffer;
+	static const VkBuffer vertexBuffer = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).buffer;
 	VkDeviceSize offsets{ 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offsets);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, descriptorSets + currentFrame, 0, nullptr);
-	vkCmdDraw(commandBuffer, MeshLoader::WidgetVertex::getWidgetVertexCount(), 1, 0, 0);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	//vkCmdDraw(commandBuffer, MeshLoader::WidgetVertex::getWidgetVertexCount(), 1, 0, 0);
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -126,89 +121,76 @@ void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t cu
 
 void GUIRenderer::CreateDescriptors()
 {
-	VkDescriptorSetLayoutBinding layoutBindings[1]{};
-	layoutBindings[0].binding = 0;
+	VkDescriptorSetLayoutBinding layoutBindings[1U]{};
+	layoutBindings[0].binding = 0U;
 	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[0].descriptorCount = 1;
+	layoutBindings[0].descriptorCount = 1U;
 	layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutCreateInfo layotCreateInfo{};
 	layotCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layotCreateInfo.bindingCount = 1;
+	layotCreateInfo.bindingCount = 1U;
 	layotCreateInfo.pBindings = layoutBindings;
 
 	if (vkCreateDescriptorSetLayout(DEVICE, &layotCreateInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI Descriptor layout!");
+		throw std::runtime_error("Failed to create gui Descriptor layout!");
 	
-	VkDescriptorPoolSize poolSizes[1]{};
+	VkDescriptorPoolSize poolSizes[1U]{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[0].descriptorCount = FRAMES_IN_FLIGHT;
+	poolSizes[0].descriptorCount = 1U;
 
 	VkDescriptorPoolCreateInfo poolCreateInfo{};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolCreateInfo.maxSets = FRAMES_IN_FLIGHT;
-	poolCreateInfo.poolSizeCount = 1;
+	poolCreateInfo.maxSets = 1U;
+	poolCreateInfo.poolSizeCount = 1U;
 	poolCreateInfo.pPoolSizes = poolSizes;
 
 	if (vkCreateDescriptorPool(DEVICE, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI Descriptor pool!");
-
-	VkDescriptorSetLayout layouts[FRAMES_IN_FLIGHT] = { descriptorSetLayout , descriptorSetLayout };
+		throw std::runtime_error("Failed to create gui Descriptor pool!");
 
 	VkDescriptorSetAllocateInfo setAllocInfo{};
 	setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	setAllocInfo.descriptorPool = descriptorPool;
-	setAllocInfo.descriptorSetCount = FRAMES_IN_FLIGHT;
-	setAllocInfo.pSetLayouts = layouts;
+	setAllocInfo.descriptorSetCount = 1U;
+	setAllocInfo.pSetLayouts = &descriptorSetLayout;
 
-	if (vkAllocateDescriptorSets(DEVICE, &setAllocInfo, descriptorSets) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI Descriptor set!");
+	if (vkAllocateDescriptorSets(DEVICE, &setAllocInfo, &descriptorSet) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create gui Descriptor set!");
 
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = MemoryManager::manager->getMemoryObject("fontBitmapTexture").imageView;
+	imageInfo.imageView = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).imageView;
 	imageInfo.sampler = textureSampler;
 
-	VkWriteDescriptorSet descriptorWrites[1]{};
+	VkWriteDescriptorSet descriptorWrites[1U]{};
 	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrites[0].dstBinding = 0;
-	descriptorWrites[0].dstArrayElement = 0;
+	descriptorWrites[0].dstBinding = 0U;
+	descriptorWrites[0].dstArrayElement = 0U;
 	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorWrites[0].descriptorCount = 1;
+	descriptorWrites[0].descriptorCount = 1U;
 	descriptorWrites[0].pImageInfo = &imageInfo;
-	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-	{
-		descriptorWrites[0].dstSet = descriptorSets[i];
-		vkUpdateDescriptorSets(DEVICE, 1, descriptorWrites, 0, nullptr);
-	}
+	descriptorWrites[0].dstSet = descriptorSet;
+	vkUpdateDescriptorSets(DEVICE, 1U, descriptorWrites, 0U, nullptr);
 }
 
 void GUIRenderer::BuildGraphicsPipeline()
 {
 	// **************** Pipeline Stages ****************
 
-	/*VkPushConstantRange pushConstantRanges[3]{};
-	pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	pushConstantRanges[0].offset = 0U;
-	pushConstantRanges[0].size = sizeof(glm::vec2);
-
-	pushConstantRanges[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	pushConstantRanges[1].offset = sizeof(glm::vec2);
-	pushConstantRanges[1].size = sizeof(glm::vec2);
-
-	pushConstantRanges[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	pushConstantRanges[2].offset = sizeof(glm::vec2) * 2;
-	pushConstantRanges[2].size = sizeof(float);*/
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.offset = 0U;
+	pushConstantRange.size = sizeof(glm::vec2);
 
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.setLayoutCount = 1U;
 	layoutInfo.pSetLayouts = &descriptorSetLayout;
-	//layoutInfo.pushConstantRangeCount = 3U;
-	//layoutInfo.pPushConstantRanges = pushConstantRanges;
+	layoutInfo.pushConstantRangeCount = 1U;
+	layoutInfo.pPushConstantRanges = &pushConstantRange;
 
 	if (vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI Pipeline layout!");
+		throw std::runtime_error("Failed to create gui Pipeline layout!");
 
 	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiVert.spv");
 	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiFrag.spv");
@@ -224,16 +206,16 @@ void GUIRenderer::BuildGraphicsPipeline()
 	shaderStageInfo[1].module = vertexShaderModule;
 	shaderStageInfo[1].pName = "main";
 
-	VkVertexInputAttributeDescription attributeDescriptions[MeshLoader::WidgetVertex::getAttributeCount()];
-	MeshLoader::WidgetVertex::getAttributeDescriptions(attributeDescriptions);
-	VkVertexInputBindingDescription bindingDescriptions[MeshLoader::WidgetVertex::getBindingCount()];
-	MeshLoader::WidgetVertex::getBindingDescriptions(bindingDescriptions);
+	VkVertexInputAttributeDescription attributeDescriptions[WidgetVertex::getAttributeCount()];
+	WidgetVertex::getAttributeDescriptions(attributeDescriptions);
+	VkVertexInputBindingDescription bindingDescriptions[WidgetVertex::getBindingCount()];
+	WidgetVertex::getBindingDescriptions(bindingDescriptions);
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = MeshLoader::WidgetVertex::getBindingCount();
+	vertexInputInfo.vertexBindingDescriptionCount = WidgetVertex::getBindingCount();
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
-	vertexInputInfo.vertexAttributeDescriptionCount = MeshLoader::WidgetVertex::getAttributeCount();
+	vertexInputInfo.vertexAttributeDescriptionCount = WidgetVertex::getAttributeCount();
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
 	// **************** Fixed Pipeline Stages ****************
@@ -327,7 +309,7 @@ void GUIRenderer::BuildGraphicsPipeline()
 	renderpassInfo.pDependencies = &subpassDependency;
 
 	if (vkCreateRenderPass(DEVICE, &renderpassInfo, nullptr, &renderPass) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI Renderpass");
+		throw std::runtime_error("Failed to create gui Renderpass");
 
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
@@ -349,7 +331,7 @@ void GUIRenderer::BuildGraphicsPipeline()
 	if (vkCreateGraphicsPipelines(DEVICE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS)  {
 		vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
 		vkDestroyShaderModule(DEVICE, fragmentShaderModule, nullptr);
-		throw std::runtime_error("Failed to create GUI Graphics pipeline");
+		throw std::runtime_error("Failed to create gui Graphics pipeline");
 	}
 	vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
 	vkDestroyShaderModule(DEVICE, fragmentShaderModule, nullptr);
@@ -419,27 +401,20 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
 
 	/************* Font Image Operations *************/ 
 	VkBufferImageCopy bufferImageCopyRegion{};
-	bufferImageCopyRegion.bufferOffset = stInfo.fontImageStagingMemoryInfo.startOffset;
-	bufferImageCopyRegion.bufferRowLength = FontBitMapMeta::WIDTH;
-	bufferImageCopyRegion.bufferImageHeight = FontBitMapMeta::BOX_HEIGHT;
+	bufferImageCopyRegion.bufferOffset = 0U;
+	bufferImageCopyRegion.bufferRowLength = 0U;
+	bufferImageCopyRegion.bufferImageHeight = 0U;
 	bufferImageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	bufferImageCopyRegion.imageSubresource.mipLevel = 0;
-	bufferImageCopyRegion.imageSubresource.layerCount = 8;
-	bufferImageCopyRegion.imageOffset = { 0, 0, 0 };
+	bufferImageCopyRegion.imageSubresource.mipLevel = 0U;
+	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0U;
+	bufferImageCopyRegion.imageSubresource.layerCount = 1U;
+	bufferImageCopyRegion.imageOffset = { 0U, 0U, 0U };
 	bufferImageCopyRegion.imageExtent = stInfo.imageExtent;
 
-	VkImage image = MemoryManager::manager->getMemoryObject("fontBitmapTexture").image;
+	VkImage image = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).image;
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
-	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
+	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	/************* Vertex Buffer Operations *************/
-	VkBufferCopy bufferCopyRegion;
-	bufferCopyRegion.srcOffset = stInfo.vertexBufferStagingMemoryInfo.startOffset;
-	bufferCopyRegion.dstOffset = 0ULL;
-	bufferCopyRegion.size = sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount();
-	vkCmdCopyBuffer(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, MemoryManager::manager->getMemoryObject("widgetVertexBuffer").buffer, 1, &bufferCopyRegion);
 
 	vkEndCommandBuffer(commandBuffer);
 
@@ -453,28 +428,38 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
-	MemoryManager::manager->freeMemory("stagingBuffer", stInfo.fontImageStagingMemoryInfo);
-	MemoryManager::manager->freeMemory("stagingBuffer", stInfo.vertexBufferStagingMemoryInfo);
+	MemoryManager::manager->UnBindObjectFromMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT);
+	MemoryManager::manager->deleteMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS);
+	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to gui hostVisible&CohorentMemory!");
 }
 
 void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 {
+	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &mappedHostMemory), "Failed to map gui hostVisible&CohorentMemory!");
+
 	/************* Font Image Creation *************/
 	ImageLoader::ImageInfo fontBitMapInfo{};
 	ImageLoader::stbiImageLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\resources\\fontBitmap.png", fontBitMapInfo, 1);
 
-	void* data = mappedHostMemory;
-	stInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel, 1U, &data);
-	memcpy(data, fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
+	VkBufferCreateInfo bufferCreateInfo{};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS), "Failed to create gui staging buffer!");
+	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui StagingBuffer to HostVisible&CoheneretMemoy!");
+
+	memcpy(shiftPointer(mappedHostMemory, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
 	ImageLoader::freeImage(fontBitMapInfo);		
 
 	VkImageCreateInfo fontImageInfo{};
 	fontImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	fontImageInfo.imageType = VK_IMAGE_TYPE_2D;
 	fontImageInfo.format = VK_FORMAT_R8_UNORM;
-	fontImageInfo.extent = { FontBitMapMeta::BOX_WIDTH,  FontBitMapMeta::BOX_HEIGHT,  1U };
-	fontImageInfo.mipLevels = 1;
-	fontImageInfo.arrayLayers = FontBitMapMeta::CHAR_COUNT_X * FontBitMapMeta::CHAR_COUNT_Y;
+	fontImageInfo.extent = { fontBitMapInfo.width,  fontBitMapInfo.height,  1U };
+	fontImageInfo.mipLevels = 1U;
+	fontImageInfo.arrayLayers = 1U;
 	fontImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	fontImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	fontImageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -486,15 +471,14 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	fontViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 	fontViewInfo.format = VK_FORMAT_R8_UNORM;
 	fontViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	fontViewInfo.subresourceRange.baseMipLevel = 0;
-	fontViewInfo.subresourceRange.levelCount = 1;
-	fontViewInfo.subresourceRange.baseArrayLayer = 0;
-	fontViewInfo.subresourceRange.layerCount = FontBitMapMeta::CHAR_COUNT_X * FontBitMapMeta::CHAR_COUNT_Y;
+	fontViewInfo.subresourceRange.baseMipLevel = 0U;
+	fontViewInfo.subresourceRange.levelCount = 1U;
+	fontViewInfo.subresourceRange.baseArrayLayer = 0U;
+	fontViewInfo.subresourceRange.layerCount = 1U;
 
-	MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, "fontBitmapTexture");
-	if (MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory", &fontViewInfo) != VK_SUCCESS)
-		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
-
+	s3DAssert(MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE), "Failed to create gui fontBitMapTexture!");
+	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).memoryRequirements.size, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
+	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL, &fontViewInfo), "Failed to bind gui fontBitMapTexture to gui deviceLocalMemory!");
 	stInfo.imageExtent = fontImageInfo.extent;
 
 	VkSamplerCreateInfo samplerCreateInfo{};
@@ -514,27 +498,19 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	samplerCreateInfo.maxLod = 0.0f;
 
 	if (vkCreateSampler(DEVICE, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create GUI texture sampler!");
+		throw std::runtime_error("Failed to create gui texture sampler!");
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};
 	vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferCreateInfo.size = sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount();
-	vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vertexBufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT);
+	vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, "widgetVertexBuffer");
-	if (MemoryManager::manager->BindObjectToMemory("widgetVertexBuffer", "deviceLocalMemory", nullptr) != VK_SUCCESS)
-		throw std::runtime_error("Failed to bind widgetVertexBuffer to deviceLocalMemory!");
-
-	data = mappedHostMemory;
-	stInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), 1U, &data);
-	MeshLoader::WidgetVertex widgetVertices[MeshLoader::WidgetVertex::getWidgetVertexCount()];
-	MeshLoader::WidgetVertexLoader(widgetVertices);
-	memcpy(data, widgetVertices, sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount());
+	s3DAssert(MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER), "Failed to create gui vertexBuffer!");
 
 	/************* Command Buffers Creation *************/
-	commandPoolObject.allocCommandBuffers(true, FRAMES_IN_FLIGHT, commandBuffers);
+	s3DAssert(commandPoolObject.allocCommandBuffers(true, 1U, &commandBuffer), "Failed to allocate gui commandBuffer!");
 
 	/************* Sync Objects Creation *************/
 	VkFenceCreateInfo fenceCreateInfo{};
@@ -547,10 +523,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-	{
-		if (vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS || vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphore[i]) != VK_SUCCESS || 
-			vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create gui syncObjects!");
-	}
+	if (vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
+		vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &inFlightFence) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create gui syncObjects!");
 }

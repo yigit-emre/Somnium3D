@@ -1,6 +1,5 @@
 #include "..\RenderPlatform.hpp"
 #include "Memory.hpp"
-#include <stdexcept>
 
 /*
 * memoryTypeBits/Buffer -> flag + usage
@@ -26,16 +25,17 @@ MemoryAllocater::~MemoryAllocater()
 	}
 }
 
-MemoryAllocater::MemoryInfo MemoryAllocater::allocSubMemory(uint32_t subMemorySize, uint32_t alignment, uint32_t upperBound)
+s3DResult MemoryAllocater::allocSubMemory(MemoryInfo& info, uint32_t subMemorySize, uint32_t alignment, uint32_t upperBound)
 {
 	if (!pSubMemories)
 	{
 		if (upperBound < subMemorySize)
-			throw std::runtime_error("No available size in memory!");
+			return s3DResult::S3D_RESULT_MEMORY_NO_AVAILABLE_SIZE;
 
 		pSubMemories = new SubMemoryInfo();
 		pSubMemories->endOffset = subMemorySize;
-		return { 0U, subMemorySize };
+		info = { 0U, subMemorySize };
+		return s3DResult::S3D_RESULT_SUCCESS;
 	}
 
 	SubMemoryInfo* pTemp = pSubMemories;
@@ -47,11 +47,12 @@ MemoryAllocater::MemoryInfo MemoryAllocater::allocSubMemory(uint32_t subMemorySi
 	newInfo->endOffset = newInfo->startOffset + subMemorySize;
 
 	if (upperBound < newInfo->endOffset)
-		throw std::runtime_error("No available size in memory!");
+		return s3DResult::S3D_RESULT_MEMORY_NO_AVAILABLE_SIZE;
 
 	newInfo->pNext = (pTemp->pNext) ? pTemp->pNext : nullptr;
 	pTemp->pNext = newInfo;
-	return { newInfo->startOffset, newInfo->endOffset };
+	info = { newInfo->startOffset, newInfo->endOffset };
+	return s3DResult::S3D_RESULT_SUCCESS;
 }
 
 void MemoryAllocater::freeSubMemory(const MemoryInfo& memoryPlace)
@@ -86,19 +87,19 @@ memoryPlace(move.memoryPlace), memoryAllocater(std::move(move.memoryAllocater)),
 	move.imageView = VK_NULL_HANDLE;
 }
 
-MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo)
+MemoryObject::MemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, s3DResult& result)
 {
 	if (bufferInfo)
 	{
-		if (vkCreateBuffer(DEVICE, bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create buffer!");
-		vkGetBufferMemoryRequirements(DEVICE, buffer, &memoryRequirements);
+		result = s3DResult::S3D_RESULT_SUCCESS | vkCreateBuffer(DEVICE, bufferInfo, nullptr, &buffer);
+		if (result == s3DResult::S3D_RESULT_SUCCESS)
+			vkGetBufferMemoryRequirements(DEVICE, buffer, &memoryRequirements);
 	}
 	else
 	{
-		if (vkCreateImage(DEVICE, imageInfo, nullptr, &image) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create image!");
-		vkGetImageMemoryRequirements(DEVICE, image, &memoryRequirements);
+		result = s3DResult::S3D_RESULT_SUCCESS | vkCreateImage(DEVICE, imageInfo, nullptr, &image);
+		if (result == s3DResult::S3D_RESULT_SUCCESS)
+			vkGetImageMemoryRequirements(DEVICE, image, &memoryRequirements);
 	}
 }
 
@@ -115,7 +116,7 @@ PhysicalMemory::PhysicalMemory(PhysicalMemory&& move) noexcept : memory(move.mem
 	move.memory = VK_NULL_HANDLE;
 }
 
-PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : totalMemorySize(size), memoryAllocater()
+PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, s3DResult& result) : totalMemorySize(size), memoryAllocater()
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(RenderPlatform::platform->physicalDevice, &memProperties);
@@ -129,17 +130,30 @@ PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : 
 		if ((memProperties.memoryTypes[i].propertyFlags & typeFlag) == typeFlag)
 		{
 			allocInfo.memoryTypeIndex = i;
-			if (vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory) != VK_SUCCESS)
-				throw std::runtime_error("Failed to allocate physical memory!");
+			result = s3DResult::S3D_RESULT_SUCCESS | vkAllocateMemory(DEVICE, &allocInfo, nullptr, &memory);
 			memoryTypeBit = 1 << i;
 			return;
 		}
 	}
-	throw std::runtime_error("Failed to find requested memory type!");
+	result = s3DResult::S3D_RESULT_MEMORY_TYPE_ERROR;
 }
 
 
 
+
+s3DResult MemoryManager::createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, uint32_t keyId)
+{
+	s3DResult result;
+	physicalMemories.emplace(keyId, PhysicalMemory(typeFlag, size, result));
+	return result;
+}
+
+s3DResult MemoryManager::createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, uint32_t keyId)
+{
+	s3DResult result; 
+	memoryObjects.emplace(keyId, MemoryObject(bufferInfo, imageInfo, result));  
+	return result;
+}
 
 void MemoryManager::UnMapPhysicalMemory(uint32_t physicalKeyId)
 {
@@ -147,11 +161,11 @@ void MemoryManager::UnMapPhysicalMemory(uint32_t physicalKeyId)
 		vkUnmapMemory(DEVICE, physicalMemories[physicalKeyId].memory);
 }
 
-VkResult MemoryManager::MapPhysicalMemory(uint32_t physicalKeyId, void** pMemoryAccess)
+s3DResult MemoryManager::MapPhysicalMemory(uint32_t physicalKeyId, void** pMemoryAccess)
 {
 	if (physicalMemories.find(physicalKeyId) != physicalMemories.end())
-		return vkMapMemory(DEVICE, physicalMemories[physicalKeyId].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
-	return VK_ERROR_MEMORY_MAP_FAILED;
+		return s3DResult::S3D_RESULT_SUCCESS | vkMapMemory(DEVICE, physicalMemories[physicalKeyId].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
+	return s3DResult::S3D_RESULT_INVALID_ARGUMENT;
 }
 
 void MemoryManager::UnBindObjectFromMemory(uint32_t objectKeyId, uint32_t physicalKeyId)
@@ -168,11 +182,9 @@ void MemoryManager::UnBindObjectFromMemory(uint32_t objectKeyId, uint32_t physic
 			object.imageView = VK_NULL_HANDLE;
 		}
 	}
-	else
-		throw std::runtime_error("Failed to find requested memory and memory object to unbind!");
 }
 
-VkResult MemoryManager::BindObjectToMemory(uint32_t objectKeyId, uint32_t physicalKeyId, VkImageViewCreateInfo* viewInfo)
+s3DResult MemoryManager::BindObjectToMemory(uint32_t objectKeyId, uint32_t physicalKeyId, VkImageViewCreateInfo* viewInfo)
 {
 	if (memoryObjects.find(objectKeyId) != memoryObjects.end() && physicalMemories.find(physicalKeyId) != physicalMemories.end())
 	{
@@ -180,36 +192,41 @@ VkResult MemoryManager::BindObjectToMemory(uint32_t objectKeyId, uint32_t physic
 		PhysicalMemory& memory = physicalMemories[physicalKeyId];
 		if (object.memoryRequirements.memoryTypeBits & memory.memoryTypeBit)
 		{
-			object.memoryPlace = memory.memoryAllocater.allocSubMemory((uint32_t)object.memoryRequirements.size, (uint32_t)object.memoryRequirements.alignment, memory.totalMemorySize);
+			s3DResult result = memory.memoryAllocater.allocSubMemory(object.memoryPlace, (uint32_t)object.memoryRequirements.size, (uint32_t)object.memoryRequirements.alignment, memory.totalMemorySize);
+			if (result != s3DResult::S3D_RESULT_SUCCESS)
+				return result;
 
 			if (viewInfo)
 			{
 				viewInfo->image = object.image;
-				VkResult result = vkBindImageMemory(DEVICE, object.image, memory.memory, object.memoryPlace.startOffset);
-				if (vkCreateImageView(DEVICE, viewInfo, nullptr, &object.imageView) != VK_SUCCESS)
-					throw std::runtime_error("Failed to create imaged view!");
-				return result;
+				result |= vkBindImageMemory(DEVICE, object.image, memory.memory, object.memoryPlace.startOffset);
+				if (result != s3DResult::S3D_RESULT_SUCCESS)
+					return result;
+				return result | vkCreateImageView(DEVICE, viewInfo, nullptr, &object.imageView);
 			}
 			else
-				return vkBindBufferMemory(DEVICE, object.buffer, memory.memory, object.memoryPlace.startOffset);
+				return result | vkBindBufferMemory(DEVICE, object.buffer, memory.memory, object.memoryPlace.startOffset);
 		}
 		else
-			throw std::runtime_error("Memory type bit does not match!");
+			return s3DResult::S3D_RESULT_MEMORY_BIND_UNMACTHED_TYPE_BIT;
 	}
 	else
-		throw std::runtime_error("Failed to find requested memory and memory object to bind!");
+		return s3DResult::S3D_RESULT_INVALID_ARGUMENT;
 }
 
-MemoryAllocater::MemoryInfo MemoryManager::allocMemory(uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory)
+s3DResult MemoryManager::allocMemory(MemoryAllocater::MemoryInfo info, uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory)
 {
-	MemoryAllocater::MemoryInfo info{};
 	if (memoryObjects.find(objectKeyId) != memoryObjects.end()) 
 	{
-		info = memoryObjects[objectKeyId].memoryAllocater.allocSubMemory(size, alignment, (uint32_t)memoryObjects[objectKeyId].memoryRequirements.size);
+		s3DResult result = memoryObjects[objectKeyId].memoryAllocater.allocSubMemory(info, size, alignment, (uint32_t)memoryObjects[objectKeyId].memoryRequirements.size);
+		if (result != s3DResult::S3D_RESULT_SUCCESS)
+			return result;
+
 		if (pMappedMemory)
 			*pMappedMemory = reinterpret_cast<void*>(reinterpret_cast<char*>(*pMappedMemory) + info.startOffset + memoryObjects[objectKeyId].memoryPlace.startOffset);
+		return result;
 	}
-	return info;
+	return s3DResult::S3D_RESULT_INVALID_ARGUMENT;
 }
 
 void MemoryManager::freeMemory(uint32_t objectKeyId, MemoryAllocater::MemoryInfo memoryInfo)
