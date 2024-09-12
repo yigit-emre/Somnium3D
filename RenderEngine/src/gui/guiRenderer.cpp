@@ -1,19 +1,51 @@
+#include "glm/glm.hpp"
 #include "..\FileIO.hpp"
 #include "guiRenderer.hpp"
+#include "..\wrapper\Memory.hpp"
 #include "..\RenderPlatform.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR) 
+enum DrawCommandsFlag : uint32_t
+{
+	S3D_DRAW_COMMAND_NULL			= 0U,
+	S3D_DRAW_COMMAND_TEXT			= 1U << 0,
+	S3D_DRAW_COMMAND_MAX_ENUM		= 0xFFFFFFFFU,
+};
+
+static inline DrawCommandsFlag operator|(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
+static inline DrawCommandsFlag operator^(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b)); }
+static inline DrawCommandsFlag operator|=(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
+static inline DrawCommandsFlag operator^=(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b)); }
+
+void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
+{
+	pBindings[0].binding = 0;
+	pBindings[0].stride = sizeof(WidgetVertex);
+	pBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+}
+
+void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes)
+{
+	pAttributes[0].binding = 0;
+	pAttributes[0].location = 0;
+	pAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+	pAttributes[0].offset = 0;
+
+	pAttributes[1].binding = 0;
+	pAttributes[1].location = 1;
+	pAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
+	pAttributes[1].offset = sizeof(glm::vec2);
+}
+
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), indexCount(0U), vertexCount(0U), bufferStateFlag(S3D_DRAW_COMMAND_NULL)
 {
 	s3DAssert(commandPoolObject.createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create gui commandPool!");
-
-	SingleTimeCommandInfo stInfo{};
-	CreateResouces(stInfo);
+	
+	VkExtent3D imageExtent;
+	CreateResouces(imageExtent);
 	CreateDescriptors();
 	BuildGraphicsPipeline();
-
-	SingleTimeCommands(stInfo);
-
-
+	SingleTimeCommands(imageExtent);
 }
 
 GUIRenderer::~GUIRenderer()
@@ -352,10 +384,10 @@ void GUIRenderer::BuildGraphicsPipeline()
 	}
 }
 
-void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
+void GUIRenderer::SingleTimeCommands(VkExtent3D imageExtent)
 {
 	VkCommandBuffer commandBuffer;
-	graphicsFamilyCommandPoolST->allocCommandBuffers(true, 1, &commandBuffer);
+	s3DAssert(graphicsFamilyCommandPoolST->allocCommandBuffers(true, 1, &commandBuffer), "Failed to allocate gui single time command buffer!");
 
 	/************* CMD Preparations *************/
 	auto imageLayoutTransition = [&commandBuffer](const VkImage& image, VkImageLayout oldLayout, VkImageLayout newLayout)
@@ -409,7 +441,7 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
 	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0U;
 	bufferImageCopyRegion.imageSubresource.layerCount = 1U;
 	bufferImageCopyRegion.imageOffset = { 0U, 0U, 0U };
-	bufferImageCopyRegion.imageExtent = stInfo.imageExtent;
+	bufferImageCopyRegion.imageExtent = imageExtent;
 
 	VkImage image = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).image;
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -427,16 +459,21 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
 		throw std::runtime_error("Failed to submit gui single time queue work!");
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
+
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
 	MemoryManager::manager->UnBindObjectFromMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT);
 	MemoryManager::manager->deleteMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS);
+
+	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui indexBuffer to gui hostVisible&CohorentMemory!");
+	shiftRealPointer(&pIndexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset);
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to gui hostVisible&CohorentMemory!");
+	shiftRealPointer(&pVertexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset);
 }
 
-void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
+void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 {
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
-	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &mappedHostMemory), "Failed to map gui hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pVertexBuffer), "Failed to map gui hostVisible&CohorentMemory!");
 
 	/************* Font Image Creation *************/
 	ImageLoader::ImageInfo fontBitMapInfo{};
@@ -450,7 +487,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS), "Failed to create gui staging buffer!");
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui StagingBuffer to HostVisible&CoheneretMemoy!");
 
-	memcpy(shiftPointer(mappedHostMemory, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
+	memcpy(shiftTempPointer(pVertexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
 	ImageLoader::freeImage(fontBitMapInfo);		
 
 	VkImageCreateInfo fontImageInfo{};
@@ -477,9 +514,9 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	fontViewInfo.subresourceRange.layerCount = 1U;
 
 	s3DAssert(MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE), "Failed to create gui fontBitMapTexture!");
-	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).memoryRequirements.size, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
+	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, static_cast<uint32_t>(MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).memoryRequirements.size), s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL, &fontViewInfo), "Failed to bind gui fontBitMapTexture to gui deviceLocalMemory!");
-	stInfo.imageExtent = fontImageInfo.extent;
+	imageExtent = fontImageInfo.extent;
 
 	VkSamplerCreateInfo samplerCreateInfo{};
 	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -501,13 +538,16 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 		throw std::runtime_error("Failed to create gui texture sampler!");
 
 	/************* Vertex Buffer Creation *************/
-	VkBufferCreateInfo vertexBufferCreateInfo{};
-	vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT);
-	vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-	s3DAssert(MemoryManager::manager->createMemoryObject(&vertexBufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER), "Failed to create gui vertexBuffer!");
+	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER), "Failed to create gui vertexBuffer!");
+
+	/************* Index Buffer Creation *************/
+	bufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_GUI_INDEX_BUFFER_DEFAULT);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER), "Failed to create gui indexBuffer!");
 
 	/************* Command Buffers Creation *************/
 	s3DAssert(commandPoolObject.allocCommandBuffers(true, 1U, &commandBuffer), "Failed to allocate gui commandBuffer!");
@@ -526,4 +566,26 @@ void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 	if (vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(DEVICE, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
 		vkCreateFence(DEVICE, &fenceCreateInfo, nullptr, &inFlightFence) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create gui syncObjects!");
+}
+
+/*
+    *******************************************************
+				        Drawing Commands
+	*******************************************************
+*/
+
+
+void GUIRenderer::EndRecordBuffer()
+{
+
+}
+
+void GUIRenderer::BeginRecordBuffer()
+{
+
+}
+
+void GUIRenderer::CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos)
+{
+	
 }

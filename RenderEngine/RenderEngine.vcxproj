@@ -159,7 +159,6 @@
     <ClInclude Include="includeEXT\engine.hpp" />
     <ClInclude Include="src\gui\guiRenderer.hpp" />
     <ClInclude Include="src\FileIO.hpp" />
-    <ClInclude Include="src\gui\widget.hpp" />
     <ClInclude Include="src\macro.hpp" />
     <ClInclude Include="src\RenderPlatform.hpp" />
     <ClInclude Include="src\wrapper\CommandBufferObject.hpp" />
@@ -171,7 +170,6 @@
     <ClCompile Include="src\engine.cpp" />
     <ClCompile Include="src\gui\guiRenderer.cpp" />
     <ClCompile Include="src\FileIO.cpp" />
-    <ClCompile Include="src\gui\widget.cpp" />
     <ClCompile Include="src\RenderPlatform.cpp" />
     <ClCompile Include="src\wrapper\CommandBufferObject.cpp" />
     <ClCompile Include="src\wrapper\Memory.cpp" />

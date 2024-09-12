@@ -1,6 +1,6 @@
 #define S3D_RENDER_ENGINE_EXPORT
-#include "macro.hpp"
 #include "engine.hpp"
+#include "wrapper/Memory.hpp"
 #include "RenderPlatform.hpp"
 #include "gui/guiRenderer.hpp"
 

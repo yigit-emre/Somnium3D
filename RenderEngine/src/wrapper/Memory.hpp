@@ -2,6 +2,23 @@
 #include "..\macro.hpp"
 #include <unordered_map>
 
+enum s3DMemoryEnum : uint32_t
+{
+	MEMORY_SIZE_KB									= 0x000003E8U,
+	MEMORY_SIZE_MB									= 0x000F4240U,
+	MEMORY_SIZE_GB									= 0x3B9ACA00U,
+	MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT			= 0x00002710U, // 10 Kb
+	MEMORY_SIZE_GUI_INDEX_BUFFER_DEFAULT			= 0x00001770U, //  6 Kb
+
+	MEMORY_ID_GUI_DEVICE_LOCAL						= 0x00000001U,
+	MEMORY_ID_GUI_HOST_VISIBLE_COHORENT				= 0x00000002U,
+
+	MEMORY_ID_GUI_STAGING_BUFFER_TRANS				= 0x00000001U, // Transient
+	MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE			= 0x00000002U,
+	MEMORY_ID_GUI_VERTEX_BUFFER						= 0x00000003U,
+	MEMORY_ID_GUI_INDEX_BUFFER						= 0x00000004U,
+};
+
 class MemoryAllocater
 {
 public:
@@ -71,8 +88,8 @@ public:
 
 	inline void deleteMemoryObject(uint32_t keyId) { memoryObjects.erase(keyId); }
 	inline void deletePhysicalMemory(uint32_t keyId) { physicalMemories.erase(keyId); }
-	_NODISCARD s3DResult createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, uint32_t keyId);
 	_NODISCARD inline const MemoryObject& getMemoryObject(uint32_t keyId) { return memoryObjects[keyId]; }
+	_NODISCARD s3DResult createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, uint32_t keyId);
 	_NODISCARD s3DResult createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, uint32_t keyId);
 
 	void UnMapPhysicalMemory(uint32_t physicalKeyId);
@@ -81,8 +98,8 @@ public:
 	void UnBindObjectFromMemory(uint32_t objectKeyId, uint32_t physicalKeyId);
 	_NODISCARD s3DResult BindObjectToMemory(uint32_t objectKeyId, uint32_t physicalKeyId, VkImageViewCreateInfo* viewInfo);
 
-	_NODISCARD s3DResult allocMemory(MemoryAllocater::MemoryInfo info, uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory = nullptr);
 	void freeMemory(uint32_t objectKeyId, MemoryAllocater::MemoryInfo memoryInfo);
+	_NODISCARD s3DResult allocMemory(MemoryAllocater::MemoryInfo info, uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory = nullptr);
 
 	static MemoryManager* manager;
 private:
@@ -90,4 +107,5 @@ private:
 	std::unordered_map<uint32_t, PhysicalMemory> physicalMemories;
 };
 
-inline void* shiftPointer(void* ptr, uint32_t byteCount) { return static_cast<void*>(static_cast<char*>(ptr) + byteCount); }
+inline void* shiftTempPointer(void* ptr, uint32_t byteCount) { return reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + byteCount); }
+inline void shiftRealPointer(void** ptr, uint32_t byteCount) { *ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(*ptr) + byteCount);}
