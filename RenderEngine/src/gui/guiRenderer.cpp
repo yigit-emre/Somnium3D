@@ -3,16 +3,15 @@
 #include "guiRenderer.hpp"
 #include "..\RenderPlatform.hpp"
 
-
 GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR, true, false), 
 commandPoolObject(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex) 
 {
-	SingleTimeCommandsInfo stCommandsInfo{};
-	CreateResouces(stCommandsInfo);
+	SingleTimeCommandInfo stInfo{};
+	CreateResouces(stInfo);
 	CreateDescriptors();
 	BuildGraphicsPipeline();
 
-	SingleTimeCommands(stCommandsInfo);	
+	SingleTimeCommands(stInfo);
 }
 
 GUIRenderer::~GUIRenderer()
@@ -92,6 +91,8 @@ void GUIRenderer::Render()
 
 void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame)
 {
+
+
 	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -125,36 +126,28 @@ void GUIRenderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t cu
 
 void GUIRenderer::CreateDescriptors()
 {
-	VkDescriptorSetLayoutBinding layoutBindings[2]{};
+	VkDescriptorSetLayoutBinding layoutBindings[1]{};
 	layoutBindings[0].binding = 0;
-	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	layoutBindings[0].descriptorCount = 1;
-	layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	layoutBindings[1].binding = 1;
-	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[1].descriptorCount = 1;
-	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutCreateInfo layotCreateInfo{};
 	layotCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layotCreateInfo.bindingCount = 2;
+	layotCreateInfo.bindingCount = 1;
 	layotCreateInfo.pBindings = layoutBindings;
 
 	if (vkCreateDescriptorSetLayout(DEVICE, &layotCreateInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Descriptor layout!");
 	
-	VkDescriptorPoolSize poolSizes[2]{};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	VkDescriptorPoolSize poolSizes[1]{};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[0].descriptorCount = FRAMES_IN_FLIGHT;
-
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = FRAMES_IN_FLIGHT;
 
 	VkDescriptorPoolCreateInfo poolCreateInfo{};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolCreateInfo.maxSets = FRAMES_IN_FLIGHT;
-	poolCreateInfo.poolSizeCount = 2;
+	poolCreateInfo.poolSizeCount = 1;
 	poolCreateInfo.pPoolSizes = poolSizes;
 
 	if (vkCreateDescriptorPool(DEVICE, &poolCreateInfo, nullptr, &descriptorPool) != VK_SUCCESS)
@@ -171,51 +164,48 @@ void GUIRenderer::CreateDescriptors()
 	if (vkAllocateDescriptorSets(DEVICE, &setAllocInfo, descriptorSets) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Descriptor set!");
 
-	VkDescriptorBufferInfo bufferInfos[2];
-	bufferInfos[0].buffer = MemoryManager::manager->getMemoryObject("guiUniformBuffer").buffer;
-	bufferInfos[0].offset = 0;
-	bufferInfos[0].range = sizeof(glm::mat4) * 2;
-
-	bufferInfos[1].buffer = bufferInfos[0].buffer;
-	bufferInfos[1].offset = sizeof(glm::mat4) * 2;
-	bufferInfos[1].range = sizeof(glm::mat4) * 2;
-
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = MemoryManager::manager->getMemoryObject("fontBitmapTexture").imageView;
 	imageInfo.sampler = textureSampler;
 
-	VkWriteDescriptorSet descriptorWrites[2]{};
+	VkWriteDescriptorSet descriptorWrites[1]{};
+	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[0].dstBinding = 0;
+	descriptorWrites[0].dstArrayElement = 0;
+	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrites[0].descriptorCount = 1;
+	descriptorWrites[0].pImageInfo = &imageInfo;
 	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
 	{
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = bufferInfos + i;
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(DEVICE, 2, descriptorWrites, 0, nullptr);
+		vkUpdateDescriptorSets(DEVICE, 1, descriptorWrites, 0, nullptr);
 	}
 }
 
 void GUIRenderer::BuildGraphicsPipeline()
 {
 	// **************** Pipeline Stages ****************
-	
+
+	/*VkPushConstantRange pushConstantRanges[3]{};
+	pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRanges[0].offset = 0U;
+	pushConstantRanges[0].size = sizeof(glm::vec2);
+
+	pushConstantRanges[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRanges[1].offset = sizeof(glm::vec2);
+	pushConstantRanges[1].size = sizeof(glm::vec2);
+
+	pushConstantRanges[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRanges[2].offset = sizeof(glm::vec2) * 2;
+	pushConstantRanges[2].size = sizeof(float);*/
+
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	layoutInfo.setLayoutCount = 1;
+	layoutInfo.setLayoutCount = 1U;
 	layoutInfo.pSetLayouts = &descriptorSetLayout;
+	//layoutInfo.pushConstantRangeCount = 3U;
+	//layoutInfo.pPushConstantRanges = pushConstantRanges;
 
 	if (vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI Pipeline layout!");
@@ -380,7 +370,7 @@ void GUIRenderer::BuildGraphicsPipeline()
 	}
 }
 
-void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInfo) const
+void GUIRenderer::SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const
 {
 	VkCommandBuffer commandBuffer;
 	graphicsFamilyCommandPoolST->allocCommandBuffers(true, 1, &commandBuffer);
@@ -429,25 +419,24 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 
 	/************* Font Image Operations *************/ 
 	VkBufferImageCopy bufferImageCopyRegion{};
-	bufferImageCopyRegion.bufferOffset = stCommandsInfo.fontImageStagingMemoryInfo.startOffset;
-	bufferImageCopyRegion.bufferRowLength = 0;
-	bufferImageCopyRegion.bufferImageHeight = 0;
+	bufferImageCopyRegion.bufferOffset = stInfo.fontImageStagingMemoryInfo.startOffset;
+	bufferImageCopyRegion.bufferRowLength = FontBitMapMeta::WIDTH;
+	bufferImageCopyRegion.bufferImageHeight = FontBitMapMeta::BOX_HEIGHT;
 	bufferImageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	bufferImageCopyRegion.imageSubresource.mipLevel = 0;
-	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
-	bufferImageCopyRegion.imageSubresource.layerCount = 1;
+	bufferImageCopyRegion.imageSubresource.layerCount = 8;
 	bufferImageCopyRegion.imageOffset = { 0, 0, 0 };
-	bufferImageCopyRegion.imageExtent = stCommandsInfo.imageExtent;
+	bufferImageCopyRegion.imageExtent = stInfo.imageExtent;
 
 	VkImage image = MemoryManager::manager->getMemoryObject("fontBitmapTexture").image;
-
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
 	vkCmdCopyBufferToImage(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
 	imageLayoutTransition(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	/************* Vertex Buffer Operations *************/
 	VkBufferCopy bufferCopyRegion;
-	bufferCopyRegion.srcOffset = stCommandsInfo.vertexBufferStagingMemoryInfo.startOffset;
+	bufferCopyRegion.srcOffset = stInfo.vertexBufferStagingMemoryInfo.startOffset;
 	bufferCopyRegion.dstOffset = 0ULL;
 	bufferCopyRegion.size = sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount();
 	vkCmdCopyBuffer(commandBuffer, MemoryManager::manager->getMemoryObject("stagingBuffer").buffer, MemoryManager::manager->getMemoryObject("widgetVertexBuffer").buffer, 1, &bufferCopyRegion);
@@ -464,18 +453,18 @@ void GUIRenderer::SingleTimeCommands(const SingleTimeCommandsInfo& stCommandsInf
 	vkWaitForFences(DEVICE, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(DEVICE, 1, &singleTimeFence);
 	graphicsFamilyCommandPoolST->freeCommandBuffers(1, &commandBuffer);
-	MemoryManager::manager->freeMemory("stagingBuffer", stCommandsInfo.fontImageStagingMemoryInfo);
-	MemoryManager::manager->freeMemory("stagingBuffer", stCommandsInfo.vertexBufferStagingMemoryInfo);
+	MemoryManager::manager->freeMemory("stagingBuffer", stInfo.fontImageStagingMemoryInfo);
+	MemoryManager::manager->freeMemory("stagingBuffer", stInfo.vertexBufferStagingMemoryInfo);
 }
 
-void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
+void GUIRenderer::CreateResouces(SingleTimeCommandInfo& stInfo)
 {
 	/************* Font Image Creation *************/
 	ImageLoader::ImageInfo fontBitMapInfo{};
 	ImageLoader::stbiImageLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\resources\\fontBitmap.png", fontBitMapInfo, 1);
 
 	void* data = mappedHostMemory;
-	stCommandsInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel, &data);
+	stInfo.fontImageStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel, 1U, &data);
 	memcpy(data, fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
 	ImageLoader::freeImage(fontBitMapInfo);		
 
@@ -483,9 +472,9 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	fontImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	fontImageInfo.imageType = VK_IMAGE_TYPE_2D;
 	fontImageInfo.format = VK_FORMAT_R8_UNORM;
-	fontImageInfo.extent = { fontBitMapInfo.width,  fontBitMapInfo.height,  1U };
+	fontImageInfo.extent = { FontBitMapMeta::BOX_WIDTH,  FontBitMapMeta::BOX_HEIGHT,  1U };
 	fontImageInfo.mipLevels = 1;
-	fontImageInfo.arrayLayers = 1;
+	fontImageInfo.arrayLayers = FontBitMapMeta::CHAR_COUNT_X * FontBitMapMeta::CHAR_COUNT_Y;
 	fontImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	fontImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	fontImageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -494,19 +483,19 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 
 	VkImageViewCreateInfo fontViewInfo{};
 	fontViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	fontViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	fontViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 	fontViewInfo.format = VK_FORMAT_R8_UNORM;
 	fontViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	fontViewInfo.subresourceRange.baseMipLevel = 0;
 	fontViewInfo.subresourceRange.levelCount = 1;
 	fontViewInfo.subresourceRange.baseArrayLayer = 0;
-	fontViewInfo.subresourceRange.layerCount = 1;
+	fontViewInfo.subresourceRange.layerCount = FontBitMapMeta::CHAR_COUNT_X * FontBitMapMeta::CHAR_COUNT_Y;
 
 	MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, "fontBitmapTexture");
 	if (MemoryManager::manager->BindObjectToMemory("fontBitmapTexture", "deviceLocalMemory", &fontViewInfo) != VK_SUCCESS)
 		throw std::runtime_error("Failed to bind fontBitmap image to device local memory!");
 
-	stCommandsInfo.imageExtent = fontImageInfo.extent;
+	stInfo.imageExtent = fontImageInfo.extent;
 
 	VkSamplerCreateInfo samplerCreateInfo{};
 	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -516,7 +505,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	samplerCreateInfo.anisotropyEnable = VK_FALSE;
-	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE; // TODO: Consider to make it true
+	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerCreateInfo.compareEnable = VK_FALSE;
 	samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -526,21 +515,6 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 
 	if (vkCreateSampler(DEVICE, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create GUI texture sampler!");
-
-	/************* Uniform Buffer Creation *************/
-	VkBufferCreateInfo uniformBufferCreateInfo{};
-	uniformBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	uniformBufferCreateInfo.size = static_cast<uint64_t>(UNIFORM_BUFFER_SIZE * 2);
-	uniformBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	uniformBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	MemoryManager::manager->createMemoryObject(&uniformBufferCreateInfo, nullptr, "guiUniformBuffer");
-	if (MemoryManager::manager->BindObjectToMemory("guiUniformBuffer", "hostVis&CohMemory", nullptr) != VK_SUCCESS)
-		throw std::runtime_error("Failed to binid guiUniformBuffer to hostVis&CohMemory");
-
-	char* dst = reinterpret_cast<char*>(mappedHostMemory) + MemoryManager::manager->getMemoryObject("guiUniformBuffer").memoryPlace.startOffset;
-	memcpy(static_cast<void*>(dst), &swapchainObject.projM, sizeof(glm::mat4));
-	memcpy(static_cast<void*>(dst + UNIFORM_BUFFER_SIZE), &swapchainObject.projM, sizeof(glm::mat4));
 
 	/************* Vertex Buffer Creation *************/
 	VkBufferCreateInfo vertexBufferCreateInfo{};
@@ -554,7 +528,7 @@ void GUIRenderer::CreateResouces(SingleTimeCommandsInfo& stCommandsInfo)
 		throw std::runtime_error("Failed to bind widgetVertexBuffer to deviceLocalMemory!");
 
 	data = mappedHostMemory;
-	stCommandsInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), &data);
+	stInfo.vertexBufferStagingMemoryInfo = MemoryManager::manager->allocMemory("stagingBuffer", sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount(), 1U, &data);
 	MeshLoader::WidgetVertex widgetVertices[MeshLoader::WidgetVertex::getWidgetVertexCount()];
 	MeshLoader::WidgetVertexLoader(widgetVertices);
 	memcpy(data, widgetVertices, sizeof(MeshLoader::WidgetVertex) * MeshLoader::WidgetVertex::getWidgetVertexCount());

@@ -1,14 +1,21 @@
 #define S3D_RENDER_ENGINE_EXPORT
-#include <stdexcept>
+#include "macro.hpp"
 #include "engine.hpp"
 #include "RenderPlatform.hpp"
 #include "gui/guiRenderer.hpp"
 
-void* mappedHostMemory = nullptr;
 static GUIRenderer* guiRenderer = nullptr;
 MemoryManager* MemoryManager::manager = nullptr;
 const RenderPlatform* RenderPlatform::platform = nullptr;
 CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
+
+/*		TODO LIST
+	* Memory Tracker
+	* Quick memory accessor
+	* RUN_TIME_EDITOR
+	* Bindless texture
+	* Optimized PipelineMaker
+*/
 
 S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
 {
@@ -26,32 +33,28 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	RenderPlatform::platform = new RenderPlatform(platformInfo, true);
 	
 	MemoryManager::manager = new MemoryManager();
-	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, S3D_SIZE_KB * 15, "deviceLocalMemory");
-	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, S3D_SIZE_KB * 15, "hostVis&CohMemory");
+	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, s3DMemoryEnum::MEMORY_SIZE_KB * 15U, s3DMemoryEnum::MEMORY_ID_DEVICE_LOCAL);
+	MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_KB * 15U, s3DMemoryEnum::MEMORY_ID_HOST_VISIBLE_COHORENT);
 
 	VkBufferCreateInfo bufferCreateInfo{};
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = S3D_SIZE_KB * 10;
+	bufferCreateInfo.size = static_cast<uint64_t>(s3DMemoryEnum::MEMORY_SIZE_KB * 10U);
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, "stagingBuffer");
+	MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_STAGING_BUFFER);
 
-	if (MemoryManager::manager->BindObjectToMemory("stagingBuffer", "hostVis&CohMemory", nullptr) != VK_SUCCESS)
-		throw std::runtime_error("Failed to bind stagingBuffer to hostVis&CohMemory!");
-	if (MemoryManager::manager->MapPhysicalMemory("hostVis&CohMemory", &mappedHostMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to map hostVis&CohMemory!");
+	assertExcept(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_STAGING_BUFFER, s3DMemoryEnum::MEMORY_ID_HOST_VISIBLE_COHORENT, nullptr) != VK_SUCCESS, "Failed to bind StagingBuffer to HostVisible&CoheneretMemoy!");
+	
 
 	graphicsFamilyCommandPoolST = new CommandPoolObject(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex);
 
-
 	guiRenderer = new GUIRenderer();
-	guiRenderer->Render();
 }
 
 S3D_API void s3DTerminateRenderEngine()
 {
 	delete guiRenderer;
-	MemoryManager::manager->UnMapPhysicalMemory("hostVis&CohMemory");	
+	MemoryManager::manager->UnMapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_HOST_VISIBLE_COHORENT);
 	delete graphicsFamilyCommandPoolST;
 	delete MemoryManager::manager;
 	delete RenderPlatform::platform;

@@ -1,13 +1,6 @@
 #pragma once
-#include <string>
 #include <unordered_map>
 #include "vulkan/vulkan.h"
-
-#define S3D_SIZE_KB 1000U
-#define S3D_SIZE_MB 1000000U
-#define S3D_SIZE_GB 1000000000U
-
-extern void* mappedHostMemory;
 
 class MemoryAllocater
 {
@@ -76,23 +69,23 @@ public:
 	MemoryManager(const MemoryManager& copy) = delete;
 	MemoryManager(MemoryManager&& move) noexcept = delete;
 
-	inline void deleteMemoryObject(std::string keyName) { memoryObjects.erase(keyName); }
-	inline void deletePhysicalMemory(std::string keyName) { physicalMemories.erase(keyName); }
-	inline void createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, std::string keyName) { physicalMemories.emplace(keyName, PhysicalMemory(typeFlag, size)); }
-	inline void createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, std::string keyName) { memoryObjects.emplace(keyName, MemoryObject(bufferInfo, imageInfo)); }
-	_NODISCARD inline const MemoryObject& getMemoryObject(std::string keyName) { return memoryObjects[keyName]; }
+	inline void deleteMemoryObject(uint32_t keyId) { memoryObjects.erase(keyId); }
+	inline void deletePhysicalMemory(uint32_t keyId) { physicalMemories.erase(keyId); }
+	inline void createPhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, uint32_t keyId) { physicalMemories.emplace(keyId, PhysicalMemory(typeFlag, size)); }
+	inline void createMemoryObject(VkBufferCreateInfo* bufferInfo, VkImageCreateInfo* imageInfo, uint32_t keyId) { memoryObjects.emplace(keyId, MemoryObject(bufferInfo, imageInfo)); }
+	_NODISCARD inline const MemoryObject& getMemoryObject(uint32_t keyId) { return memoryObjects[keyId]; }
 
-	void UnMapPhysicalMemory(std::string physicalKeyName);
-	VkResult MapPhysicalMemory(std::string physicalKeyName, void** pMemoryAccess);
+	void UnMapPhysicalMemory(uint32_t physicalKeyId);
+	VkResult MapPhysicalMemory(uint32_t physicalKeyId, void** pMemoryAccess);
 
-	void UnBindObjectFromMemory(std::string objectKeyName, std::string physicalKeyName);
-	VkResult BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName, VkImageViewCreateInfo* viewInfo);
+	void UnBindObjectFromMemory(uint32_t objectKeyId, uint32_t physicalKeyId);
+	VkResult BindObjectToMemory(uint32_t objectKeyId, uint32_t physicalKeyId, VkImageViewCreateInfo* viewInfo);
 
-	_NODISCARD MemoryAllocater::MemoryInfo allocMemory(std::string objectKeyName, uint32_t size, void** pMappedMemory = nullptr);
-	void freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo);
+	_NODISCARD MemoryAllocater::MemoryInfo allocMemory(uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory = nullptr);
+	void freeMemory(uint32_t objectKeyId, MemoryAllocater::MemoryInfo memoryInfo);
 
 	static MemoryManager* manager;
 private:
-	std::unordered_map<std::string, MemoryObject> memoryObjects;
-	std::unordered_map<std::string, PhysicalMemory> physicalMemories;
+	std::unordered_map<uint32_t, MemoryObject> memoryObjects;
+	std::unordered_map<uint32_t, PhysicalMemory> physicalMemories;
 };

@@ -141,25 +141,25 @@ PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size) : 
 
 
 
-void MemoryManager::UnMapPhysicalMemory(std::string physicalKeyName)
+void MemoryManager::UnMapPhysicalMemory(uint32_t physicalKeyId)
 {
-	if (physicalMemories.find(physicalKeyName) != physicalMemories.end())
-		vkUnmapMemory(DEVICE, physicalMemories[physicalKeyName].memory);
+	if (physicalMemories.find(physicalKeyId) != physicalMemories.end())
+		vkUnmapMemory(DEVICE, physicalMemories[physicalKeyId].memory);
 }
 
-VkResult MemoryManager::MapPhysicalMemory(std::string physicalKeyName, void** pMemoryAccess)
+VkResult MemoryManager::MapPhysicalMemory(uint32_t physicalKeyId, void** pMemoryAccess)
 {
-	if (physicalMemories.find(physicalKeyName) != physicalMemories.end())
-		return vkMapMemory(DEVICE, physicalMemories[physicalKeyName].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
+	if (physicalMemories.find(physicalKeyId) != physicalMemories.end())
+		return vkMapMemory(DEVICE, physicalMemories[physicalKeyId].memory, 0, VK_WHOLE_SIZE, 0, pMemoryAccess);
 	return VK_ERROR_MEMORY_MAP_FAILED;
 }
 
-void MemoryManager::UnBindObjectFromMemory(std::string objectKeyName, std::string physicalKeyName)
+void MemoryManager::UnBindObjectFromMemory(uint32_t objectKeyId, uint32_t physicalKeyId)
 {
-	if (memoryObjects.find(objectKeyName) != memoryObjects.end() && physicalMemories.find(physicalKeyName) != physicalMemories.end())
+	if (memoryObjects.find(objectKeyId) != memoryObjects.end() && physicalMemories.find(physicalKeyId) != physicalMemories.end())
 	{
-		MemoryObject& object = memoryObjects[objectKeyName];
-		physicalMemories[physicalKeyName].memoryAllocater.freeSubMemory(memoryObjects[objectKeyName].memoryPlace);
+		MemoryObject& object = memoryObjects[objectKeyId];
+		physicalMemories[physicalKeyId].memoryAllocater.freeSubMemory(memoryObjects[objectKeyId].memoryPlace);
 		object.memoryPlace = { 0U, 0U };
 
 		if (object.imageView)
@@ -172,12 +172,12 @@ void MemoryManager::UnBindObjectFromMemory(std::string objectKeyName, std::strin
 		throw std::runtime_error("Failed to find requested memory and memory object to unbind!");
 }
 
-VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::string physicalKeyName, VkImageViewCreateInfo* viewInfo)
+VkResult MemoryManager::BindObjectToMemory(uint32_t objectKeyId, uint32_t physicalKeyId, VkImageViewCreateInfo* viewInfo)
 {
-	if (memoryObjects.find(objectKeyName) != memoryObjects.end() && physicalMemories.find(physicalKeyName) != physicalMemories.end())
+	if (memoryObjects.find(objectKeyId) != memoryObjects.end() && physicalMemories.find(physicalKeyId) != physicalMemories.end())
 	{
-		MemoryObject& object = memoryObjects[objectKeyName];
-		PhysicalMemory& memory = physicalMemories[physicalKeyName];
+		MemoryObject& object = memoryObjects[objectKeyId];
+		PhysicalMemory& memory = physicalMemories[physicalKeyId];
 		if (object.memoryRequirements.memoryTypeBits & memory.memoryTypeBit)
 		{
 			object.memoryPlace = memory.memoryAllocater.allocSubMemory((uint32_t)object.memoryRequirements.size, (uint32_t)object.memoryRequirements.alignment, memory.totalMemorySize);
@@ -200,20 +200,20 @@ VkResult MemoryManager::BindObjectToMemory(std::string objectKeyName, std::strin
 		throw std::runtime_error("Failed to find requested memory and memory object to bind!");
 }
 
-MemoryAllocater::MemoryInfo MemoryManager::allocMemory(std::string objectKeyName, uint32_t size, void** pMappedMemory)
+MemoryAllocater::MemoryInfo MemoryManager::allocMemory(uint32_t objectKeyId, uint32_t size, uint32_t alignment, void** pMappedMemory)
 {
 	MemoryAllocater::MemoryInfo info{};
-	if (memoryObjects.find(objectKeyName) != memoryObjects.end()) 
+	if (memoryObjects.find(objectKeyId) != memoryObjects.end()) 
 	{
-		info = memoryObjects[objectKeyName].memoryAllocater.allocSubMemory(size, 1, (uint32_t)memoryObjects[objectKeyName].memoryRequirements.size);
+		info = memoryObjects[objectKeyId].memoryAllocater.allocSubMemory(size, alignment, (uint32_t)memoryObjects[objectKeyId].memoryRequirements.size);
 		if (pMappedMemory)
-			*pMappedMemory = reinterpret_cast<void*>(reinterpret_cast<char*>(*pMappedMemory) + info.startOffset + memoryObjects[objectKeyName].memoryPlace.startOffset);
+			*pMappedMemory = reinterpret_cast<void*>(reinterpret_cast<char*>(*pMappedMemory) + info.startOffset + memoryObjects[objectKeyId].memoryPlace.startOffset);
 	}
 	return info;
 }
 
-void MemoryManager::freeMemory(std::string objectKeyName, MemoryAllocater::MemoryInfo memoryInfo)
+void MemoryManager::freeMemory(uint32_t objectKeyId, MemoryAllocater::MemoryInfo memoryInfo)
 {
-	if (memoryObjects.find(objectKeyName) != memoryObjects.end())
-		memoryObjects[objectKeyName].memoryAllocater.freeSubMemory(memoryInfo);
+	if (memoryObjects.find(objectKeyId) != memoryObjects.end())
+		memoryObjects[objectKeyId].memoryAllocater.freeSubMemory(memoryInfo);
 }

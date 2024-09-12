@@ -160,6 +160,7 @@
     <ClInclude Include="src\gui\guiRenderer.hpp" />
     <ClInclude Include="src\FileIO.hpp" />
     <ClInclude Include="src\gui\widget.hpp" />
+    <ClInclude Include="src\macro.hpp" />
     <ClInclude Include="src\RenderPlatform.hpp" />
     <ClInclude Include="src\wrapper\CommandBufferObject.hpp" />
     <ClInclude Include="src\wrapper\Memory.hpp" />

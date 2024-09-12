@@ -14,9 +14,8 @@ public:
 
 
 	void Render();
-	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame);
 private:
-	struct SingleTimeCommandsInfo
+	struct SingleTimeCommandInfo
 	{
 		VkExtent3D imageExtent;
 		MemoryAllocater::MemoryInfo fontImageStagingMemoryInfo;
@@ -44,9 +43,9 @@ private:
 
 	VkSampler textureSampler;
 
-	//TODO: dynamic descriptors
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
-	void CreateResouces(SingleTimeCommandsInfo& stCommandsInfo);
-	void SingleTimeCommands(const SingleTimeCommandsInfo& info) const;
+	void CreateResouces(SingleTimeCommandInfo& stInfo);
+	void SingleTimeCommands(const SingleTimeCommandInfo& stInfo) const;
+	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex, uint32_t currentFrame);
 };
