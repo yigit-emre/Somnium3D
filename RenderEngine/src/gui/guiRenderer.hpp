@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "glm/glm.hpp"
 #include "..\wrapper\SwapchainObject.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
@@ -16,6 +17,20 @@ public:
 	inline static constexpr uint32_t getWidgetVertexCount() { return 6U; }
 };
 
+//struct CpuCache
+//{
+//	uint32_t* indices{ nullptr };
+//	WidgetVertex* vertices{ nullptr };
+//
+//	uint32_t indexCount{ 0U };
+//	uint32_t vertexCount{ 0U };
+//
+//	~CpuCache();
+//	CpuCache() = default;
+//	CpuCache(CpuCache&& move) noexcept;
+//	CpuCache(const CpuCache& copy) = delete;
+//};
+
 class GUIRenderer
 {
 public:
@@ -29,8 +44,11 @@ public:
 
 	void EndRecordBuffer();
 	void BeginRecordBuffer();
+	//void SubmitRecordBuffer();
 
+	
 	void CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos);
+
 private:
 	VkPipeline pipeline;
 	VkRenderPass renderPass;
@@ -58,7 +76,8 @@ private:
 
 	uint32_t indexCount;
 	uint32_t vertexCount;
-	VkBool32 bufferStateFlag;
+	uint32_t recordBufferIndex;
+	std::vector<uint16_t> recordBuffer;
 
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();

@@ -23,3 +23,8 @@ namespace ImageLoader
 	void stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel);
 	void freeImage(ImageInfo& info);
 }
+
+namespace FileLog
+{
+	void s3DErrorLog(const char* message, const char* filepath);
+}

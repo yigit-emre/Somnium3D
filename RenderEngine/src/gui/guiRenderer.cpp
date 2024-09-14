@@ -5,18 +5,6 @@
 #include "..\RenderPlatform.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-enum DrawCommandsFlag : uint32_t
-{
-	S3D_DRAW_COMMAND_NULL			= 0U,
-	S3D_DRAW_COMMAND_TEXT			= 1U << 0,
-	S3D_DRAW_COMMAND_MAX_ENUM		= 0xFFFFFFFFU,
-};
-
-static inline DrawCommandsFlag operator|(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
-static inline DrawCommandsFlag operator^(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b)); }
-static inline DrawCommandsFlag operator|=(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
-static inline DrawCommandsFlag operator^=(DrawCommandsFlag a, DrawCommandsFlag b) { return static_cast<DrawCommandsFlag>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b)); }
-
 void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
 {
 	pBindings[0].binding = 0;
@@ -37,7 +25,7 @@ void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* p
 	pAttributes[1].offset = sizeof(glm::vec2);
 }
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), indexCount(0U), vertexCount(0U), bufferStateFlag(S3D_DRAW_COMMAND_NULL)
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), indexCount(0U), vertexCount(0U), recordBufferIndex(0U), recordBuffer(30)
 {
 	s3DAssert(commandPoolObject.createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create gui commandPool!");
 	
@@ -582,10 +570,33 @@ void GUIRenderer::EndRecordBuffer()
 
 void GUIRenderer::BeginRecordBuffer()
 {
+	indexCount = 0U;
+	vertexCount = 0U;
+	recordBufferIndex = 0U;
+	static void* const indexBufferPointer = pIndexBuffer;
+	static void* const vertexBufferPointer = pVertexBuffer;
+
+	pIndexBuffer = indexBufferPointer;
+	pVertexBuffer = vertexBufferPointer;
+
+
 
 }
 
 void GUIRenderer::CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos)
-{
+{	
+	
 	
 }
+
+/*
+*	Vertex
+	position(x,y) : color(r,g,b) : text(u) -> 24 byte
+	24 * 4 -> 96  ->   120 byte
+	6 * 4 -> 24   -> 
+
+	24 * 6 = 144
+
+
+*/
+

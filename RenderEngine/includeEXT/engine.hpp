@@ -12,3 +12,5 @@ struct S3D_API AppWindowCreateInfo
 S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection = false);
 
 S3D_API void s3DTerminateRenderEngine();
+
+S3D_API void s3DExceptionHandle(const char* exceptionMessage);

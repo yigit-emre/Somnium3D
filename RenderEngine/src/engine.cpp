@@ -1,5 +1,6 @@
 #define S3D_RENDER_ENGINE_EXPORT
 #include "engine.hpp"
+#include "FileIO.hpp"
 #include "wrapper/Memory.hpp"
 #include "RenderPlatform.hpp"
 #include "gui/guiRenderer.hpp"
@@ -45,4 +46,9 @@ S3D_API void s3DTerminateRenderEngine()
 	delete graphicsFamilyCommandPoolST;
 	delete MemoryManager::manager;
 	delete RenderPlatform::platform;
+}
+
+S3D_API void s3DExceptionHandle(const char* exceptionMessage)
+{
+	FileLog::s3DErrorLog(exceptionMessage, "D:\\visualDEV\\Somnium3D\\Application\\src\\errorlog.txt");
 }
