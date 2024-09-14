@@ -453,15 +453,15 @@ void GUIRenderer::SingleTimeCommands(VkExtent3D imageExtent)
 	MemoryManager::manager->deleteMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS);
 
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui indexBuffer to gui hostVisible&CohorentMemory!");
-	shiftRealPointer(&pIndexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset);
+	pIndexBuffer = shiftTempPointer<uint16_t>(&pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset);
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to gui hostVisible&CohorentMemory!");
-	shiftRealPointer(&pVertexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset);
+	pVertexBuffer = shiftTempPointer<WidgetVertex>(&pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset);
 }
 
 void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 {
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
-	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pVertexBuffer), "Failed to map gui hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pHostBuffer), "Failed to map gui hostVisible&CohorentMemory!");
 
 	/************* Font Image Creation *************/
 	ImageLoader::ImageInfo fontBitMapInfo{};
@@ -475,7 +475,7 @@ void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS), "Failed to create gui staging buffer!");
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui StagingBuffer to HostVisible&CoheneretMemoy!");
 
-	memcpy(shiftTempPointer(pVertexBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
+	memcpy(shiftTempPointer(pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
 	ImageLoader::freeImage(fontBitMapInfo);		
 
 	VkImageCreateInfo fontImageInfo{};
@@ -570,14 +570,6 @@ void GUIRenderer::EndRecordBuffer()
 
 void GUIRenderer::BeginRecordBuffer()
 {
-	indexCount = 0U;
-	vertexCount = 0U;
-	recordBufferIndex = 0U;
-	static void* const indexBufferPointer = pIndexBuffer;
-	static void* const vertexBufferPointer = pVertexBuffer;
-
-	pIndexBuffer = indexBufferPointer;
-	pVertexBuffer = vertexBufferPointer;
 
 
 
@@ -588,15 +580,3 @@ void GUIRenderer::CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos)
 	
 	
 }
-
-/*
-*	Vertex
-	position(x,y) : color(r,g,b) : text(u) -> 24 byte
-	24 * 4 -> 96  ->   120 byte
-	6 * 4 -> 24   -> 
-
-	24 * 6 = 144
-
-
-*/
-

@@ -17,20 +17,6 @@ public:
 	inline static constexpr uint32_t getWidgetVertexCount() { return 6U; }
 };
 
-//struct CpuCache
-//{
-//	uint32_t* indices{ nullptr };
-//	WidgetVertex* vertices{ nullptr };
-//
-//	uint32_t indexCount{ 0U };
-//	uint32_t vertexCount{ 0U };
-//
-//	~CpuCache();
-//	CpuCache() = default;
-//	CpuCache(CpuCache&& move) noexcept;
-//	CpuCache(const CpuCache& copy) = delete;
-//};
-
 class GUIRenderer
 {
 public:
@@ -71,8 +57,9 @@ private:
 
 	VkSampler textureSampler;
 
-	void* pIndexBuffer;
-	void* pVertexBuffer;
+	void* pHostBuffer;
+	uint16_t* pIndexBuffer;
+	WidgetVertex* pVertexBuffer;
 
 	uint32_t indexCount;
 	uint32_t vertexCount;

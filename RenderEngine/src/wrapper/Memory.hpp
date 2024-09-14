@@ -107,5 +107,11 @@ private:
 	std::unordered_map<uint32_t, PhysicalMemory> physicalMemories;
 };
 
-inline void* shiftTempPointer(void* ptr, uint32_t byteCount) { return reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + byteCount); }
 inline void shiftRealPointer(void** ptr, uint32_t byteCount) { *ptr = reinterpret_cast<void*>(reinterpret_cast<char*>(*ptr) + byteCount);}
+_NODISCARD inline void* shiftTempPointer(void* ptr, uint32_t byteCount) { return reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + byteCount); }
+
+template<typename T>
+_NODISCARD inline T* shiftTempPointer(void* ptr, uint32_t byteCount) { return reinterpret_cast<T*>((reinterpret_cast<uint64_t>(ptr) + byteCount + alignof(T) - 1) & ~(alignof(T) - 1)); }
+
+template<typename T>
+inline void shiftRealPointer(void** ptr, uint32_t byteCount, uint32_t alignment) { *ptr = reinterpret_cast<void*>((reinterpret_cast<uint64_t>(*ptr) + byteCount + alignof(T) - 1) & ~(alignof(T) - 1)); }
