@@ -1,5 +1,4 @@
 #pragma once
-#include <vector>
 #include "glm/glm.hpp"
 #include "..\wrapper\SwapchainObject.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
@@ -36,8 +35,11 @@ public:
 	void CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos);
 
 private:
-	VkPipeline pipeline;
-	VkRenderPass renderPass;
+	VkPipeline fullDrawPipeline;
+	VkPipeline onScreenPipeline;
+	VkPipeline offScreenPipeline;
+	VkRenderPass onScreenRenderpass;
+	VkRenderPass combinedRenderpass;
 	VkPipelineLayout pipelineLayout;
 
 	SwapchainObject swapchainObject;
@@ -55,16 +57,9 @@ private:
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSetLayout descriptorSetLayout;
 
+	void* pHostMemory;
 	VkSampler textureSampler;
 
-	void* pHostBuffer;
-	uint16_t* pIndexBuffer;
-	WidgetVertex* pVertexBuffer;
-
-	uint32_t indexCount;
-	uint32_t vertexCount;
-	uint32_t recordBufferIndex;
-	std::vector<uint16_t> recordBuffer;
 
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();

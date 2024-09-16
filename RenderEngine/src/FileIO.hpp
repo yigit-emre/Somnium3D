@@ -1,5 +1,5 @@
 #pragma once
-#include "vulkan/vulkan.h"
+#include "macro.hpp"
 
 namespace ShaderLoader
 {
@@ -20,7 +20,7 @@ namespace ImageLoader
 		unsigned char* pixels{ nullptr };
 	};
 
-	void stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel);
+	s3DResult stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel);
 	void freeImage(ImageInfo& info);
 }
 

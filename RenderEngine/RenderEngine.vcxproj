@@ -163,6 +163,7 @@
     <ClInclude Include="src\RenderPlatform.hpp" />
     <ClInclude Include="src\wrapper\CommandBufferObject.hpp" />
     <ClInclude Include="src\wrapper\Memory.hpp" />
+    <ClInclude Include="src\wrapper\PipelineObject.hpp" />
     <ClInclude Include="src\wrapper\SwapchainObject.hpp" />
     <ClInclude Include="vendor\stb_image.h" />
   </ItemGroup>
@@ -173,6 +174,7 @@
     <ClCompile Include="src\RenderPlatform.cpp" />
     <ClCompile Include="src\wrapper\CommandBufferObject.cpp" />
     <ClCompile Include="src\wrapper\Memory.cpp" />
+    <ClCompile Include="src\wrapper\PipelineObject.cpp" />
     <ClCompile Include="src\wrapper\SwapchainObject.cpp" />
     <ClCompile Include="vendor\implement.cpp" />
   </ItemGroup>

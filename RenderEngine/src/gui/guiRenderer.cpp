@@ -4,6 +4,7 @@
 #include "..\wrapper\Memory.hpp"
 #include "..\RenderPlatform.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "..\wrapper\PipelineObject.hpp"
 
 void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
 {
@@ -25,7 +26,7 @@ void WidgetVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* p
 	pAttributes[1].offset = sizeof(glm::vec2);
 }
 
-GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), indexCount(0U), vertexCount(0U), recordBufferIndex(0U), recordBuffer(30)
+GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR)
 {
 	s3DAssert(commandPoolObject.createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create gui commandPool!");
 	
@@ -49,9 +50,9 @@ GUIRenderer::~GUIRenderer()
 	vkDestroyFence(DEVICE, singleTimeFence, nullptr);
 	vkDestroySampler(DEVICE, textureSampler, nullptr);
 
-	vkDestroyPipeline(DEVICE, pipeline, nullptr);
-	vkDestroyPipelineLayout(DEVICE, pipelineLayout, nullptr);
+	vkDestroyPipeline(DEVICE, graphicsPipeline, nullptr);
 	vkDestroyRenderPass(DEVICE, renderPass, nullptr);
+	vkDestroyPipelineLayout(DEVICE, pipelineLayout, nullptr);
 
 	vkDestroyDescriptorPool(DEVICE, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(DEVICE, descriptorSetLayout, nullptr);
@@ -196,54 +197,14 @@ void GUIRenderer::CreateDescriptors()
 void GUIRenderer::BuildGraphicsPipeline()
 {
 	// **************** Pipeline Stages ****************
-
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	pushConstantRange.offset = 0U;
-	pushConstantRange.size = sizeof(glm::vec2);
-
-	VkPipelineLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	layoutInfo.setLayoutCount = 1U;
-	layoutInfo.pSetLayouts = &descriptorSetLayout;
-	layoutInfo.pushConstantRangeCount = 1U;
-	layoutInfo.pPushConstantRanges = &pushConstantRange;
-
-	if (vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create gui Pipeline layout!");
-
-	VkShaderModule vertexShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiVert.spv");
-	VkShaderModule fragmentShaderModule = ShaderLoader::SpirVLoader("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiFrag.spv");
-
-	VkPipelineShaderStageCreateInfo shaderStageInfo[2]{};
-	shaderStageInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStageInfo[0].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStageInfo[0].module = fragmentShaderModule;
-	shaderStageInfo[0].pName = "main";
-
-	shaderStageInfo[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStageInfo[1].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStageInfo[1].module = vertexShaderModule;
-	shaderStageInfo[1].pName = "main";
+	VkPipelineShaderStageCreateInfo shaderStageInfos[2U]{};
+	createShaderStage("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiVert.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", shaderStageInfos);
+	createShaderStage("D:\\visualDEV\\Somnium3D\\RenderEngine\\shaders\\guiFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", shaderStageInfos + 1);
 
 	VkVertexInputAttributeDescription attributeDescriptions[WidgetVertex::getAttributeCount()];
 	WidgetVertex::getAttributeDescriptions(attributeDescriptions);
 	VkVertexInputBindingDescription bindingDescriptions[WidgetVertex::getBindingCount()];
 	WidgetVertex::getBindingDescriptions(bindingDescriptions);
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = WidgetVertex::getBindingCount();
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
-	vertexInputInfo.vertexAttributeDescriptionCount = WidgetVertex::getAttributeCount();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
-
-	// **************** Fixed Pipeline Stages ****************
-
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
-	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -257,96 +218,123 @@ void GUIRenderer::BuildGraphicsPipeline()
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchainObject.swapchainExtent;
 
-	VkPipelineViewportStateCreateInfo viewportStateInfo{};
-	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportStateInfo.pViewports = &viewport;
-	viewportStateInfo.viewportCount = 1;
-	viewportStateInfo.pScissors = &scissor;
-	viewportStateInfo.scissorCount = 1;
+	/*VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.offset = 0U;
+	pushConstantRange.size = sizeof(glm::vec2);*/
 
-	VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
-	rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizationInfo.depthClampEnable = VK_FALSE;
-	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizationInfo.lineWidth = 1.0f;
-	rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizationInfo.depthBiasEnable = VK_FALSE;
+	VkPipelineLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	layoutInfo.setLayoutCount = 1U;
+	layoutInfo.pSetLayouts = &descriptorSetLayout;
+	//layoutInfo.pushConstantRangeCount = 1U;
+	//layoutInfo.pPushConstantRanges = &pushConstantRange;
 
-	VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
-	multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisamplingInfo.sampleShadingEnable = VK_FALSE;
-	multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	s3DAssert(vkCreatePipelineLayout(DEVICE, &layoutInfo, nullptr, &pipelineLayout), "Failed to create gui Pipeline layout!");
 
-	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
+	GrapchicsPipelineInfo* graphicsPipelineInfo = new GrapchicsPipelineInfo();
+	graphicsPipelineInfo->fillDefaultValuesforFixedStates();
 
-	VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
-	colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlendInfo.logicOpEnable = VK_FALSE;
-	colorBlendInfo.attachmentCount = 1;
-	colorBlendInfo.pAttachments = &colorBlendAttachment;
+	graphicsPipelineInfo->hasDynamicState = VK_FALSE;
+	graphicsPipelineInfo->hasDepthStencilState = VK_FALSE;
+	graphicsPipelineInfo->hasDepthStencilState = VK_FALSE;
+
+	graphicsPipelineInfo->shaderStageCount = 2U;
+	graphicsPipelineInfo->pStages = shaderStageInfos;
+
+	graphicsPipelineInfo->vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	graphicsPipelineInfo->vertexInputStateInfo.vertexBindingDescriptionCount = WidgetVertex::getBindingCount();
+	graphicsPipelineInfo->vertexInputStateInfo.pVertexBindingDescriptions = bindingDescriptions;
+	graphicsPipelineInfo->vertexInputStateInfo.vertexAttributeDescriptionCount = WidgetVertex::getAttributeCount();
+	graphicsPipelineInfo->vertexInputStateInfo.pVertexAttributeDescriptions = attributeDescriptions;
+
+	graphicsPipelineInfo->viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	graphicsPipelineInfo->viewportStateInfo.pViewports = &viewport;
+	graphicsPipelineInfo->viewportStateInfo.viewportCount = 1;
+	graphicsPipelineInfo->viewportStateInfo.pScissors = &scissor;
+	graphicsPipelineInfo->viewportStateInfo.scissorCount = 1;
+	
+	graphicsPipelineInfo->layout = pipelineLayout;
 
 	// **************** RenderPass Stage ****************
+	VkAttachmentDescription attachmentDescriptions[2]{};
+	attachmentDescriptions[0].format = swapchainObject.swapchainFormat;
+	attachmentDescriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachmentDescriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescriptions[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachmentDescriptions[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentDescription colorAttachment{};
-	colorAttachment.format = swapchainObject.swapchainFormat;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	attachmentDescriptions[1].format = swapchainObject.swapchainFormat;
+	attachmentDescriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescriptions[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDescriptions[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-	VkAttachmentReference colorAttachmentReference{};
-	colorAttachmentReference.attachment = 0;
-	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference offScreenColorWriteAttachmentReferance{};
+	offScreenColorWriteAttachmentReferance.attachment = 0U;
+	offScreenColorWriteAttachmentReferance.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentReference;
-	subpass.pDepthStencilAttachment = nullptr;
+	VkAttachmentReference offScreenColorReadAttachmentReferance{};
+	offScreenColorReadAttachmentReferance.attachment = 0U;
+	offScreenColorReadAttachmentReferance.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	VkSubpassDependency subpassDependency{};
-	subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	subpassDependency.dstSubpass = 0;
-	subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpassDependency.srcAccessMask = 0;
-	subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	VkAttachmentReference onScreenColorAttachmentReferance{};
+	onScreenColorAttachmentReferance.attachment = 1U;
+	onScreenColorAttachmentReferance.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpasses[2]{};
+	subpasses[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpasses[0].colorAttachmentCount = 1U;
+	subpasses[0].pColorAttachments = &offScreenColorWriteAttachmentReferance;
+
+	subpasses[1].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpasses[1].colorAttachmentCount = 1U;
+	subpasses[1].pColorAttachments = &onScreenColorAttachmentReferance;
+	subpasses[1].inputAttachmentCount = 1U;
+	subpasses[1].pInputAttachments = &offScreenColorReadAttachmentReferance;
+
+	VkSubpassDependency subpassDependencies[2]{};
+	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	subpassDependencies[0].dstSubpass = 0U;
+	subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[0].srcAccessMask = 0U;
+	subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpassDependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	subpassDependencies[1].srcSubpass = 0U;
+	subpassDependencies[1].dstSubpass = 1U;
+	subpassDependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpassDependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	subpassDependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	subpassDependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	VkRenderPassCreateInfo renderpassInfo{};
 	renderpassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderpassInfo.attachmentCount = 1;
-	renderpassInfo.pAttachments = &colorAttachment;
-	renderpassInfo.subpassCount = 1;
-	renderpassInfo.pSubpasses = &subpass;
-	renderpassInfo.dependencyCount = 1;
-	renderpassInfo.pDependencies = &subpassDependency;
+	renderpassInfo.attachmentCount = 2;
+	renderpassInfo.pAttachments = attachmentDescriptions;
+	renderpassInfo.subpassCount = 2;
+	renderpassInfo.pSubpasses = subpasses;
+	renderpassInfo.dependencyCount = 2;
+	renderpassInfo.pDependencies = subpassDependencies;
+	s3DAssert(vkCreateRenderPass(DEVICE, &renderpassInfo, nullptr, &combinedRenderpass), "Failed to create gui combined Renderpass");
 
-	if (vkCreateRenderPass(DEVICE, &renderpassInfo, nullptr, &renderPass) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create gui Renderpass");
+	renderpassInfo.attachmentCount = 2;
+	renderpassInfo.pAttachments = attachmentDescriptions;
+	renderpassInfo.subpassCount = 2;
+	renderpassInfo.pSubpasses = subpasses;
+	renderpassInfo.dependencyCount = 2;
+	renderpassInfo.pDependencies = subpassDependencies;
+	s3DAssert(vkCreateRenderPass(DEVICE, &renderpassInfo, nullptr, &combinedRenderpass), "Failed to create gui onScreen Renderpass");
+	
 
-
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
-	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCreateInfo.stageCount = 2;
-	pipelineCreateInfo.pStages = shaderStageInfo;
-	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-	pipelineCreateInfo.layout = pipelineLayout;
-	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
-	pipelineCreateInfo.pViewportState = &viewportStateInfo;
-	pipelineCreateInfo.pRasterizationState = &rasterizationInfo;
-	pipelineCreateInfo.pMultisampleState = &multisamplingInfo;
-	pipelineCreateInfo.pColorBlendState = &colorBlendInfo;
-	pipelineCreateInfo.pDynamicState = nullptr;
-	pipelineCreateInfo.pDepthStencilState = nullptr;
-	pipelineCreateInfo.renderPass = renderPass;
-	pipelineCreateInfo.subpass = 0;
 
 	if (vkCreateGraphicsPipelines(DEVICE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS)  {
 		vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
@@ -356,6 +344,8 @@ void GUIRenderer::BuildGraphicsPipeline()
 	vkDestroyShaderModule(DEVICE, vertexShaderModule, nullptr);
 	vkDestroyShaderModule(DEVICE, fragmentShaderModule, nullptr);
 
+
+	// **************** FrameBuffer Stage ****************
 	frameBuffers = new VkFramebuffer[swapchainObject.imageCount];
 	VkFramebufferCreateInfo frameBufferCreateInfo{};
 	frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -452,16 +442,20 @@ void GUIRenderer::SingleTimeCommands(VkExtent3D imageExtent)
 	MemoryManager::manager->UnBindObjectFromMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT);
 	MemoryManager::manager->deleteMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS);
 
-	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui indexBuffer to gui hostVisible&CohorentMemory!");
+	/*s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui indexBuffer to gui hostVisible&CohorentMemory!");
 	pIndexBuffer = shiftTempPointer<uint16_t>(&pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset);
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to gui hostVisible&CohorentMemory!");
-	pVertexBuffer = shiftTempPointer<WidgetVertex>(&pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset);
+	pVertexBuffer = shiftTempPointer<WidgetVertex>(&pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset);*/
 }
 
 void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 {
+	/************* Memory Creation *************/
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_GUI_VERTEX_BUFFER_DEFAULT, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
-	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pHostBuffer), "Failed to map gui hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, static_cast<uint32_t>(MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).memoryRequirements.size), s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
+	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pHostMemory), "Failed to map gui hostVisible&CohorentMemory!");
+
+
 
 	/************* Font Image Creation *************/
 	ImageLoader::ImageInfo fontBitMapInfo{};
@@ -475,7 +469,7 @@ void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS), "Failed to create gui staging buffer!");
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui StagingBuffer to HostVisible&CoheneretMemoy!");
 
-	memcpy(shiftTempPointer(pHostBuffer, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
+	memcpy(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_STAGING_BUFFER_TRANS).memoryPlace.startOffset), fontBitMapInfo.pixels, static_cast<uint64_t>(fontBitMapInfo.width * fontBitMapInfo.height * fontBitMapInfo.channel));
 	ImageLoader::freeImage(fontBitMapInfo);		
 
 	VkImageCreateInfo fontImageInfo{};
@@ -502,7 +496,7 @@ void GUIRenderer::CreateResouces(VkExtent3D& imageExtent)
 	fontViewInfo.subresourceRange.layerCount = 1U;
 
 	s3DAssert(MemoryManager::manager->createMemoryObject(nullptr, &fontImageInfo, s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE), "Failed to create gui fontBitMapTexture!");
-	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, static_cast<uint32_t>(MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE).memoryRequirements.size), s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
+	
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_FONT_BITMAP_TEXTURE_IMAGE, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL, &fontViewInfo), "Failed to bind gui fontBitMapTexture to gui deviceLocalMemory!");
 	imageExtent = fontImageInfo.extent;
 

@@ -29,7 +29,7 @@ struct SwapChainSupportDetails
 	inline bool GetSwapChainDetails() const { return !(formats.empty() || presentModes.empty()); };
 };
 
-SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode)
+SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, uint32_t image_count)
 {
 	SwapChainSupportDetails details(RenderPlatform::platform->physicalDevice, RenderPlatform::platform->surface);
 
@@ -58,7 +58,10 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 		details.capabilities.currentExtent.height = clamp(height, details.capabilities.minImageExtent.height, details.capabilities.maxImageExtent.height);
 	}
 
-	imageCount = (details.capabilities.maxImageCount > 0 && (details.capabilities.minImageCount + 1) > details.capabilities.maxImageCount) ? details.capabilities.maxImageCount : details.capabilities.minImageCount + 1;
+	if (image_count != 0 && details.capabilities.minImageCount <= image_count && (details.capabilities.maxImageCount == 0 || image_count < imageCount <= details.capabilities.maxImageCount))
+		imageCount = image_count;
+	else
+		imageCount = (details.capabilities.maxImageCount > 0 && (details.capabilities.minImageCount + 1) >= details.capabilities.maxImageCount) ? details.capabilities.maxImageCount : details.capabilities.minImageCount + 1;
 
 	VkSwapchainCreateInfoKHR swapchainInfo{};
 	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

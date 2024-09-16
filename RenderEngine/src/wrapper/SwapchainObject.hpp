@@ -1,6 +1,8 @@
 #pragma once
 #include "vulkan/vulkan.h"
 
+//TODO: Support resizable swapchain
+
 class SwapchainObject
 {
 public:
@@ -15,5 +17,5 @@ public:
 	~SwapchainObject();
 	SwapchainObject(SwapchainObject&& move) noexcept;
 	SwapchainObject(const SwapchainObject& copy) = delete;
-	SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode); //TODO: Support resizable swapchain
+	SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, uint32_t image_count = 0U); // '0U' stands for auto selection
 };

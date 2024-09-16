@@ -2,7 +2,6 @@
 #include "RenderPlatform.hpp"
 #include "stb_image.h"
 #include "FileIO.hpp"
-#include "macro.hpp"
 #include <fstream>
 #include <vector>
 #include <chrono>
@@ -27,9 +26,8 @@ VkShaderModule ShaderLoader::SpirVLoader(const char* filepath)
 	createInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
-	if (vkCreateShaderModule(DEVICE, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create shader module!");
-	return shaderModule;   
+	s3DAssert(vkCreateShaderModule(DEVICE, &createInfo, nullptr, &shaderModule), filepath);
+	return shaderModule;
 }
 
 void ShaderLoader::DestroyShaderModule(VkShaderModule& shaderModule)
@@ -38,7 +36,7 @@ void ShaderLoader::DestroyShaderModule(VkShaderModule& shaderModule)
 	shaderModule = VK_NULL_HANDLE;
 }
 
-void ImageLoader::stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel)
+s3DResult ImageLoader::stbiImageLoader(const char* filepath, ImageInfo& info, uint32_t desiredChannel)
 {
 	int width, height, channel;
 	if (info.pixels = stbi_load(filepath, &width, &height, &channel, desiredChannel))
@@ -46,9 +44,9 @@ void ImageLoader::stbiImageLoader(const char* filepath, ImageInfo& info, uint32_
 		info.channel = desiredChannel;
 		info.width = static_cast<uint32_t>(width);
 		info.height = static_cast<uint32_t>(height);
+		return s3DResult::S3D_RESULT_SUCCESS;
 	}
-	else
-		throw std::runtime_error("Failed to load fontBitmap texture!");
+	return s3DResult::S3D_RESULT_UNEXPECTED_ERROR;
 }
 
 void ImageLoader::freeImage(ImageInfo& info)
