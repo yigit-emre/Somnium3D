@@ -83,10 +83,12 @@
     <None Include="shaders\SpirVCompiler.bat">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="shaders\guiFrag.frag" />
-    <None Include="shaders\guiVert.vert" />
-    <None Include="shaders\guiFrag.spv" />
-    <None Include="shaders\guiVert.spv" />
+    <None Include="shaders\guiOnScreenFrag.frag" />
+    <None Include="shaders\guiOnScreenVert.vert" />
+    <None Include="shaders\guiOffScreenFrag.frag" />
+    <None Include="shaders\guiOnScreenVert.spv" />
+    <None Include="shaders\guiOnScreenFrag.spv" />
+    <None Include="shaders\guiOffScreenFrag.spv" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\fontBitmap.png">

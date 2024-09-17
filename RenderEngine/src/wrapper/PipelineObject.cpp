@@ -1,8 +1,9 @@
-#include "..\FileIO.hpp"
 #include "PipelineObject.hpp"
 #include "..\RenderPlatform.hpp"
 
-void GrapchicsPipelineInfo::fillDefaultValuesforFixedStates()
+#pragma warning(push)
+#pragma warning(disable: 26495)
+GrapchicsPipelineInfo::GrapchicsPipelineInfo(bool defaultValueForFixedStates)
 {
 	inputAssemblyStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyStateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -30,49 +31,24 @@ void GrapchicsPipelineInfo::fillDefaultValuesforFixedStates()
 	colorBlendStateInfo.attachmentCount = 1;
 	colorBlendStateInfo.pAttachments = &colorBlendAttachment;
 }
+#pragma warning(pop)
 
-VkResult createPipeline(uint32_t pipelineInfoCount, const GrapchicsPipelineInfo* pPipelineInfos, VkPipeline* pPipelines, bool ownershipOfpPipelineInfos)
+void GrapchicsPipelineInfo::fillPipelineCreateInfo(VkGraphicsPipelineCreateInfo& createInfo)
 {
-	VkGraphicsPipelineCreateInfo* pCreateInfos = new VkGraphicsPipelineCreateInfo[pipelineInfoCount]{};
-	
-	for (uint32_t i = 0; i < pipelineInfoCount; i++)
-	{
-		pCreateInfos[i].sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pCreateInfos[i].flags = pPipelineInfos[i].flag;
-		pCreateInfos[i].stageCount = pPipelineInfos[i].shaderStageCount;
-		pCreateInfos[i].pStages = pPipelineInfos[i].pStages;
-		pCreateInfos[i].pVertexInputState = &pPipelineInfos[i].vertexInputStateInfo;
-		pCreateInfos[i].pInputAssemblyState = &pPipelineInfos[i].inputAssemblyStateInfo;
-		pCreateInfos[i].pTessellationState = (pPipelineInfos[i].hasTessellationState) ? &pPipelineInfos[i].tessellationStateInfo : nullptr;;
-		pCreateInfos[i].pViewportState = &pPipelineInfos[i].viewportStateInfo;
-		pCreateInfos[i].pRasterizationState = &pPipelineInfos[i].rasterizationStateInfo;
-		pCreateInfos[i].pMultisampleState = &pPipelineInfos[i].multisampleStateInfo;
-		pCreateInfos[i].pDepthStencilState = (pPipelineInfos[i].hasDepthStencilState) ? &pPipelineInfos[i].depthStencilStateInfo : nullptr;
-		pCreateInfos[i].pColorBlendState = &pPipelineInfos[i].colorBlendStateInfo;
-		pCreateInfos[i].pDynamicState = (pPipelineInfos[i].hasDynamicState) ? &pPipelineInfos[i].dynamicStateInfo : nullptr;
-		pCreateInfos[i].layout = pPipelineInfos[i].layout;
-		pCreateInfos[i].renderPass = pPipelineInfos[i].renderPass;
-		pCreateInfos[i].subpass = pPipelineInfos[i].subPassIndex;
-	}
-	 VkResult result = vkCreateGraphicsPipelines(DEVICE, VK_NULL_HANDLE, pipelineInfoCount, pCreateInfos, nullptr, pPipelines);
-	 if (ownershipOfpPipelineInfos) 
-	 {
-		 if (pipelineInfoCount == 1)
-			 delete pPipelineInfos;
-		 else
-			 delete[] pPipelineInfos;
-	 }
-	 delete[] pCreateInfos;
-	 return result;
-}
-
-void createShaderStage(const char* shaderSrcCodeFilepath, VkShaderStageFlagBits shaderStage, const char* pName, VkPipelineShaderStageCreateInfo* createInfo, VkShaderModule* shaderModule)
-{
-	createInfo->sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	createInfo->stage = shaderStage;
-	createInfo->module = (shaderSrcCodeFilepath) ? ShaderLoader::SpirVLoader(shaderSrcCodeFilepath) : *shaderModule;
-	createInfo->pName = pName;
-
-	if (!shaderSrcCodeFilepath)
-		*shaderModule = createInfo->module;
+	createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	createInfo.flags = flag;
+	createInfo.stageCount = shaderStageCount;
+	createInfo.pStages = pStages;
+	createInfo.pVertexInputState = &vertexInputStateInfo;
+	createInfo.pInputAssemblyState = &inputAssemblyStateInfo;
+	createInfo.pTessellationState = (hasTessellationState) ? &tessellationStateInfo : nullptr;;
+	createInfo.pViewportState = &viewportStateInfo;
+	createInfo.pRasterizationState = &rasterizationStateInfo;
+	createInfo.pMultisampleState = &multisampleStateInfo;
+	createInfo.pDepthStencilState = (hasDepthStencilState) ? &depthStencilStateInfo : nullptr;
+	createInfo.pColorBlendState = &colorBlendStateInfo;
+	createInfo.pDynamicState = (hasDynamicState) ? &dynamicStateInfo : nullptr;
+	createInfo.layout = layout;
+	createInfo.renderPass = renderPass;
+	createInfo.subpass = subPassIndex;
 }

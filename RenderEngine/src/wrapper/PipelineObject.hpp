@@ -39,9 +39,6 @@ public:
 	uint32_t subPassIndex;
 	VkPipelineCreateFlagBits flag;
 
-	void fillDefaultValuesforFixedStates();
+	GrapchicsPipelineInfo(bool defaultValueForFixedStates);
+	void fillPipelineCreateInfo(VkGraphicsPipelineCreateInfo& createInfo);
 };
-
-VkResult createPipeline(uint32_t pipelineInfoCount, const GrapchicsPipelineInfo* pPipelineInfos, VkPipeline* pPipelines, bool ownershipOfpPipelineInfos = true);
-
-void createShaderStage(const char* shaderSrcCodeFilepath, VkShaderStageFlagBits shaderStage, const char* pName, VkPipelineShaderStageCreateInfo* createInfo, VkShaderModule* shaderModule = nullptr);

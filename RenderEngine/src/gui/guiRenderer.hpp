@@ -7,13 +7,11 @@ struct WidgetVertex
 {
 public:
 	glm::vec2 positions;
-	glm::vec2 texCoords;
 
 	static void getBindingDescriptions(VkVertexInputBindingDescription* pBindings);
 	static void getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes);
 	inline static constexpr uint32_t getBindingCount() { return 1U; }
-	inline static constexpr uint32_t getAttributeCount() { return 2U; }
-	inline static constexpr uint32_t getWidgetVertexCount() { return 6U; }
+	inline static constexpr uint32_t getAttributeCount() { return 1U; }
 };
 
 class GUIRenderer
@@ -27,20 +25,20 @@ public:
 
 	void Render();
 
-	void EndRecordBuffer();
-	void BeginRecordBuffer();
+	//void EndRecordBuffer();
+	//void BeginRecordBuffer();
 	//void SubmitRecordBuffer();
 
 	
-	void CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos);
+	//void CmdDrawText(const char* string, uint32_t xPos, uint32_t yPos);
 
 private:
-	VkPipeline fullDrawPipeline;
 	VkPipeline onScreenPipeline;
 	VkPipeline offScreenPipeline;
-	VkRenderPass onScreenRenderpass;
 	VkRenderPass combinedRenderpass;
-	VkPipelineLayout pipelineLayout;
+	VkPipelineLayout onScreenPipelineLayout;
+	VkPipelineLayout offScreenPipelineLayout;
+	VkDescriptorSetLayout onScreenDescriptorSetLayout;
 
 	SwapchainObject swapchainObject;
 	CommandPoolObject commandPoolObject;
@@ -53,17 +51,16 @@ private:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 
-	VkDescriptorSet descriptorSet;
 	VkDescriptorPool descriptorPool;
-	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSet onScreenDescriptorSet;
 
 	void* pHostMemory;
-	VkSampler textureSampler;
+	//VkSampler textureSampler;
 
 
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
-	void CreateResouces(VkExtent3D& imageExtent);
-	void SingleTimeCommands(VkExtent3D imageExtent);
+	void CreateResouces();
+	//void SingleTimeCommands();
 	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t currentImageIndex);
 };

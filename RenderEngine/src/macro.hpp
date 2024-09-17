@@ -28,3 +28,8 @@ inline void s3DAssert(VkResult result, const char* message) {
 	if (result != VkResult::VK_SUCCESS)
 		throw std::runtime_error(message + std::to_string(static_cast<s3DResult>(result)));
 };
+
+inline void s3DAssert(bool result, const char* message) {
+	if (result)
+		throw std::runtime_error(message + std::to_string(static_cast<s3DResult>(result)));
+};
