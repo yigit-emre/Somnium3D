@@ -21,15 +21,6 @@ GrapchicsPipelineInfo::GrapchicsPipelineInfo(bool defaultValueForFixedStates)
 	multisampleStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampleStateInfo.sampleShadingEnable = VK_FALSE;
 	multisampleStateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
-
-	colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlendStateInfo.logicOpEnable = VK_FALSE;
-	colorBlendStateInfo.attachmentCount = 1;
-	colorBlendStateInfo.pAttachments = &colorBlendAttachment;
 }
 #pragma warning(pop)
 

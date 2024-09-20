@@ -13,7 +13,7 @@ public:
 
 	void BeginRender();
 	void ActiveDynamicState() const;
-	void EndRender() const;
+	void EndRender();
 private:
 	VkPipeline onScreenPipeline;
 	VkPipeline offScreenPipeline;

@@ -59,11 +59,9 @@ GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR
 	}
 
 	// --------- Rendering Structs Preparations ---------
-	VkPipelineStageFlags  waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = 1U;
 	submitInfo.pWaitSemaphores = &imageAvailableSemaphore;
-	submitInfo.pWaitDstStageMask = &waitStage;
 	submitInfo.commandBufferCount = 1U;
 	submitInfo.pCommandBuffers = &commandBuffer;
 	submitInfo.signalSemaphoreCount = 1U;
@@ -76,13 +74,11 @@ GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR
 	presentInfo.pSwapchains = &swapchainObject.swapchain;
 	presentInfo.pImageIndices = &currentImageIndex;
 
-	VkClearValue clearValue{ 0.0f, 0.0f, 0.0f, 1.0f };
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo.renderPass = combinedRenderpass;
 	renderPassBeginInfo.renderArea.extent = swapchainObject.swapchainExtent;
 	renderPassBeginInfo.renderArea.offset = { 0,0 };
-	renderPassBeginInfo.clearValueCount = 1U;
-	renderPassBeginInfo.pClearValues = &clearValue;
+	renderPassBeginInfo.clearValueCount = 2U;
 
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 }
@@ -391,10 +387,10 @@ void GUIRenderer::BuildGraphicsPipeline()
 	shaderStageInfos[1].stage = VK_SHADER_STAGE_VERTEX_BIT;
 	shaderStageInfos[1].pName = "main";
 
-	shaderStageInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStageInfos[1].module = offScreenFragmentShader;
-	shaderStageInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStageInfos[1].pName = "main";
+	shaderStageInfos[2].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStageInfos[2].module = offScreenFragmentShader;
+	shaderStageInfos[2].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shaderStageInfos[2].pName = "main";
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -408,16 +404,20 @@ void GUIRenderer::BuildGraphicsPipeline()
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchainObject.swapchainExtent;
 
-	GrapchicsPipelineInfo* graphicsPipelineInfo = new GrapchicsPipelineInfo(true);
-
-	graphicsPipelineInfo->hasDynamicState = VK_FALSE;
-	graphicsPipelineInfo->hasDepthStencilState = VK_FALSE;
-	graphicsPipelineInfo->hasTessellationState = VK_FALSE;
+	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
 
 	VkVertexInputBindingDescription bindingDescriptions[getBindingCount()];
 	getBindingDescriptions(bindingDescriptions);
 	VkVertexInputAttributeDescription attributeDescriptions[getAttributeCount()];
 	getAttributeDescriptions(attributeDescriptions);
+
+	GrapchicsPipelineInfo* graphicsPipelineInfo = new GrapchicsPipelineInfo(true);
+
+	graphicsPipelineInfo->hasDynamicState = VK_FALSE;
+	graphicsPipelineInfo->hasDepthStencilState = VK_FALSE;
+	graphicsPipelineInfo->hasTessellationState = VK_FALSE;
 
 	graphicsPipelineInfo->vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	graphicsPipelineInfo->vertexInputStateInfo.vertexBindingDescriptionCount = getBindingCount();
@@ -437,6 +437,11 @@ void GUIRenderer::BuildGraphicsPipeline()
 	graphicsPipelineInfo->pStages = shaderStageInfos;
 	graphicsPipelineInfo->subPassIndex = 1U;
 	graphicsPipelineInfo->layout = onScreenPipelineLayout;
+
+	graphicsPipelineInfo->colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	graphicsPipelineInfo->colorBlendStateInfo.logicOpEnable = VK_FALSE;
+	graphicsPipelineInfo->colorBlendStateInfo.attachmentCount = 1;
+	graphicsPipelineInfo->colorBlendStateInfo.pAttachments = &colorBlendAttachment;
 	
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	graphicsPipelineInfo->fillPipelineCreateInfo(pipelineCreateInfo);
@@ -484,6 +489,7 @@ void GUIRenderer::BeginRender()
 {
 	VkDeviceSize offsets{ 0 };
 	static const VkDevice device = DEVICE;
+	VkClearValue clearValues[2]{ {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} };
 	static const VkBuffer vertexBuffer = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).buffer;
 
 	vkWaitForFences(device, 1U, &inFlightFence, VK_TRUE, UINT64_MAX);
@@ -492,7 +498,8 @@ void GUIRenderer::BeginRender()
 
 	vkResetCommandBuffer(commandBuffer, 0);
 	s3DAssert(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo), "Failed to begin gui commandBuffer!");
-
+	
+	renderPassBeginInfo.pClearValues = clearValues;
 	renderPassBeginInfo.framebuffer = frameBuffers[currentImageIndex];
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -515,15 +522,18 @@ void GUIRenderer::ActiveDynamicState() const
 }
 
 
-void GUIRenderer::EndRender() const
+void GUIRenderer::EndRender()
 {
 	vkCmdDraw(commandBuffer, vertexCount, 1U, 0U, 0U);
 
 	static const VkQueue presentQueue = RenderPlatform::platform->presentQueue;
 	static const VkQueue graphicsQueue = RenderPlatform::platform->graphicsQueue;
+	VkPipelineStageFlags  waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	vkCmdEndRenderPass(commandBuffer);
 	s3DAssert(vkEndCommandBuffer(commandBuffer), "Failed to end gui commandBuffer!");
+
+	submitInfo.pWaitDstStageMask = &waitStage;
 	s3DAssert(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence), "Failed to submit gui queue work!");	
 	s3DAssert(vkQueuePresentKHR(presentQueue, &presentInfo), "Failed to presnet gui swapchain image!");
 }
