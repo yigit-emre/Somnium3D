@@ -18,6 +18,11 @@ RenderPlatform::RenderPlatform(const RenderPlatformInfo& info, bool manuelSelect
 	InitLibs(info.windowName);
 	SelectPhysicalDevice(manuelSelection, info);
 	CreateLogicalDevice(info);
+
+	VkPhysicalDeviceProperties physicalDeviceProperties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+	minMappedMemoryAlignmentLimit = physicalDeviceProperties.limits.minMemoryMapAlignment;
 }
 
 void RenderPlatform::InitLibs(const char* windowName)

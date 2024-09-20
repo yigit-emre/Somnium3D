@@ -24,20 +24,20 @@ public:
 
 	uint32_t shaderStageCount;
 	const VkPipelineShaderStageCreateInfo* pStages;
-	VkPipelineVertexInputStateCreateInfo vertexInputStateInfo;
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo;
-	VkPipelineTessellationStateCreateInfo tessellationStateInfo;
-	VkPipelineViewportStateCreateInfo viewportStateInfo;
-	VkPipelineRasterizationStateCreateInfo rasterizationStateInfo;
-	VkPipelineMultisampleStateCreateInfo multisampleStateInfo;
-	VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo;
-	VkPipelineColorBlendStateCreateInfo colorBlendStateInfo;
-	VkPipelineDynamicStateCreateInfo dynamicStateInfo;
+	VkPipelineVertexInputStateCreateInfo vertexInputStateInfo{};
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo{};
+	VkPipelineTessellationStateCreateInfo tessellationStateInfo{};
+	VkPipelineViewportStateCreateInfo viewportStateInfo{};
+	VkPipelineRasterizationStateCreateInfo rasterizationStateInfo{};
+	VkPipelineMultisampleStateCreateInfo multisampleStateInfo{};
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo{};
+	VkPipelineColorBlendStateCreateInfo colorBlendStateInfo{};
+	VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 
 	VkPipelineLayout layout;
 	VkRenderPass renderPass;
 	uint32_t subPassIndex;
-	VkPipelineCreateFlagBits flag;
+	VkPipelineCreateFlagBits flag{};
 
 	GrapchicsPipelineInfo(bool defaultValueForFixedStates);
 	void fillPipelineCreateInfo(VkGraphicsPipelineCreateInfo& createInfo);

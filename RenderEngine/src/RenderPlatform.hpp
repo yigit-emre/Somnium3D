@@ -35,6 +35,8 @@ public:
 	VkDevice device;
 	VkPhysicalDevice physicalDevice;
 
+	uint64_t minMappedMemoryAlignmentLimit;
+
 	static const RenderPlatform* platform;
 private:
 	~RenderPlatform();

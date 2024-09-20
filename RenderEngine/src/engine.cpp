@@ -1,6 +1,7 @@
 #define S3D_RENDER_ENGINE_EXPORT
 #include "engine.hpp"
 #include "FileIO.hpp"
+#include "gui/widget.hpp"
 #include "wrapper/Memory.hpp"
 #include "RenderPlatform.hpp"
 #include "gui/guiRenderer.hpp"
@@ -38,6 +39,24 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
 
 	guiRenderer = new GUIRenderer();
+
+	bool singleTime = true;
+
+	while (!glfwWindowShouldClose(RenderPlatform::platform->window))
+	{
+		glfwPollEvents();
+		guiRenderer->BeginRender();
+
+		if (singleTime)
+		{
+			DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f));
+			singleTime = false;
+		}
+
+		guiRenderer->ActiveDynamicState();
+		guiRenderer->EndRender();
+	}
+	vkDeviceWaitIdle(DEVICE);
 }
 
 S3D_API void s3DTerminateRenderEngine()

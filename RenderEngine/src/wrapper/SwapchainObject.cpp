@@ -58,7 +58,7 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 		details.capabilities.currentExtent.height = clamp(height, details.capabilities.minImageExtent.height, details.capabilities.maxImageExtent.height);
 	}
 
-	if (image_count != 0 && details.capabilities.minImageCount <= image_count && (details.capabilities.maxImageCount == 0 || image_count < imageCount <= details.capabilities.maxImageCount))
+	if (image_count != 0 && details.capabilities.minImageCount <= image_count && (details.capabilities.maxImageCount == 0 || image_count <= details.capabilities.maxImageCount))
 		imageCount = image_count;
 	else
 		imageCount = (details.capabilities.maxImageCount > 0 && (details.capabilities.minImageCount + 1) >= details.capabilities.maxImageCount) ? details.capabilities.maxImageCount : details.capabilities.minImageCount + 1;
