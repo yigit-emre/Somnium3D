@@ -45,7 +45,7 @@ s3DResult BeginQuickSubmission(VkCommandBuffer& commandBuffer, VkFence& fence)
 		return s3DResult::S3D_RESULT_QUICK_SUBMISSION_FENCE_ERROR | result;
 
 	if(s3DResult result = graphicsFamilyCommandPoolST->allocCommandBuffers(true, 1, &commandBuffer))
-		return s3DResult::S3D_RESULT_QUICK_SUBMISSION_COMMAND_BUFFER_ERROR | result;
+		return result;
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

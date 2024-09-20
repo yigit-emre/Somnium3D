@@ -41,7 +41,7 @@ void GrapchicsPipelineInfo::fillPipelineCreateInfo(VkGraphicsPipelineCreateInfo&
 	createInfo.pStages = pStages;
 	createInfo.pVertexInputState = &vertexInputStateInfo;
 	createInfo.pInputAssemblyState = &inputAssemblyStateInfo;
-	createInfo.pTessellationState = (hasTessellationState) ? &tessellationStateInfo : nullptr;;
+	createInfo.pTessellationState = (hasTessellationState) ? &tessellationStateInfo : nullptr;
 	createInfo.pViewportState = &viewportStateInfo;
 	createInfo.pRasterizationState = &rasterizationStateInfo;
 	createInfo.pMultisampleState = &multisampleStateInfo;
