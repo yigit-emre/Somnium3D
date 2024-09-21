@@ -39,21 +39,22 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
 
 	guiRenderer = new GUIRenderer();
+	setScreenCenter(-guiRenderer->getSwapchainExtent().x / 2.0f, -guiRenderer->getSwapchainExtent().y / 2.0f);
 
 	bool singleTime = true;
-
 	while (!glfwWindowShouldClose(RenderPlatform::platform->window))
 	{
 		glfwPollEvents();
 		guiRenderer->BeginRender();
 
-		if (singleTime)
+		/*if (singleTime)
 		{
-			DrawSurface(glm::vec2(0.2f, 0.2f), glm::vec2(0.4f, 0.4f));
+			DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(0.2f, 0.0f, 0.0f));
 			singleTime = false;
-		}
+		}*/
 
 		guiRenderer->ActiveDynamicState();
+		DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(0.2f, 0.0f, 0.0f));
 		guiRenderer->EndRender();
 	}
 	vkDeviceWaitIdle(DEVICE);
