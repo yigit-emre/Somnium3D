@@ -216,8 +216,8 @@ void GUIRenderer::CreateResouces()
 	positions[1].position = {  1.0f, -1.0f };
 	positions[2].position = {  1.0f,  1.0f };
 	positions[3].position = {  1.0f,  1.0f };
-	positions[3].position = { -1.0f,  1.0f };
-	positions[3].position = { -1.0f, -1.0f };
+	positions[4].position = { -1.0f,  1.0f };
+	positions[5].position = { -1.0f, -1.0f };
 	memcpy(pHostMemory, positions, sizeof(WidgetVertex) * 6ULL);
 
 	/************* Index Buffer Creation *************/

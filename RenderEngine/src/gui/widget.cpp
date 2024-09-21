@@ -25,7 +25,14 @@ void DrawSurface(const glm::vec2& screenPosition, const glm::vec2& extent)
 #ifdef _DEBUG
 	//getMousePosition(position, extent);
 #endif // _DEBUG
-	WidgetVertex vertices[6]{ {screenPosition}, { screenPosition + extent.x },{ screenPosition + extent },{ screenPosition + extent },{ screenPosition + extent.y }, { screenPosition } };
+	WidgetVertex vertices[6]{ 
+		{ screenPosition }, 
+		{ glm::vec2(screenPosition.x + extent.x, screenPosition.y) },
+		{ screenPosition + extent },
+		{ screenPosition + extent },
+		{ glm::vec2(screenPosition.x, screenPosition.y + extent.y) },
+		{ screenPosition } };
+
 	memcpy(pWidgetMemory, vertices, sizeof(WidgetVertex) * 6ULL);
 
 	vertexCount += 6U;
