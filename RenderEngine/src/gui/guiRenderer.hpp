@@ -12,7 +12,7 @@ public:
 	GUIRenderer(GUIRenderer&& move) noexcept = delete;
 
 	void BeginRender();
-	void ActiveDynamicState() const;
+	void ActiveStaticState();
 	void EndRender();
 
 	inline const glm::vec2 getSwapchainExtent() const { return { static_cast<float>(swapchainObject.swapchainExtent.width), static_cast<float>(swapchainObject.swapchainExtent.height) }; }
@@ -48,9 +48,6 @@ private:
 	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 
 	void* pHostMemory;
-	uint32_t currentImageIndex;
-	uint32_t pIndexMemoryPlace;
-	uint32_t pVertexMemoryPlace;
 
 	void CreateResouces(VkExtent2D& copyImageExtentInfo);
 	void CreateDescriptors();

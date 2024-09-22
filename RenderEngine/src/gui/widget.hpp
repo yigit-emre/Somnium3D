@@ -17,6 +17,7 @@ struct WidgetVertex
 
 void setScreenCenter(float xPos, float yPos);
 
+
 void DrawSurface(glm::vec2 screenPosition, const glm::vec2& extent, const glm::vec3& color);
 //void DrawText(glm::vec2 screenPosition, const glm::vec2& extent, const glm::vec3& color, const char* text);
 //bool DrawButton(glm::vec2 screenPosition, const glm::vec2& extent, const glm::vec3& color, const char* text);
