@@ -47,14 +47,14 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 		glfwPollEvents();
 		guiRenderer->BeginRender();
 
-		/*if (singleTime)
+		if (singleTime)
 		{
 			DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(0.2f, 0.0f, 0.0f));
 			singleTime = false;
-		}*/
+		}
 
 		guiRenderer->ActiveDynamicState();
-		DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(0.2f, 0.0f, 0.0f));
+		//DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(0.2f, 0.0f, 0.0f));
 		guiRenderer->EndRender();
 	}
 	vkDeviceWaitIdle(DEVICE);

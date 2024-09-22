@@ -47,6 +47,11 @@ private:
 	VkRenderPassBeginInfo renderPassBeginInfo{};
 	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 
+	void* pHostMemory;
+	uint32_t currentImageIndex;
+	uint32_t pIndexMemoryPlace;
+	uint32_t pVertexMemoryPlace;
+
 	void CreateResouces(VkExtent2D& copyImageExtentInfo);
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();

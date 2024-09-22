@@ -5,10 +5,10 @@
 #include "..\RenderPlatform.hpp"
 #include "..\wrapper\PipelineObject.hpp"
 
+uint32_t indexCount;
 uint32_t vertexCount;
-static void* pHostMemory;
-WidgetVertex* pWidgetMemory;
-static uint32_t currentImageIndex;
+uint16_t* pIndexMemory;
+WidgetVertex* pVertexMemory;
 
 GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), 
 projectionMatrix(2.0f / static_cast<float>(swapchainObject.swapchainExtent.width), 2.0f / static_cast<float>(swapchainObject.swapchainExtent.height))
@@ -19,7 +19,7 @@ projectionMatrix(2.0f / static_cast<float>(swapchainObject.swapchainExtent.width
 	BuildGraphicsPipeline();
 	PreRenderSubmission(copyImageExtentInfo);
 
-	// --------- Rendering Structs Preparations ---------
+	// ----------- Rendering Preparations -----------
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = 1U;
 	submitInfo.pWaitSemaphores = &imageAvailableSemaphore;
@@ -42,6 +42,9 @@ projectionMatrix(2.0f / static_cast<float>(swapchainObject.swapchainExtent.width
 	renderPassBeginInfo.clearValueCount = 2U;
 
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	pIndexMemoryPlace = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset + sizeof(uint16_t) * 6U;
+	pVertexMemoryPlace = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset + sizeof(WidgetVertex) * 4U;
 }
 
 GUIRenderer::~GUIRenderer()
@@ -70,7 +73,7 @@ GUIRenderer::~GUIRenderer()
 void GUIRenderer::CreateResouces(VkExtent2D& copyImageExtentInfo)
 {
 	/************* Memory Creation *************/
-	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_KB * 5U, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_KB * 10U, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, s3DMemoryEnum::MEMORY_SIZE_MB * 6U, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
 	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pHostMemory), "Failed to map gui hostVisible&CohorentMemory!");
 	s3DAssert(RenderPlatform::platform->minMappedMemoryAlignmentLimit < alignof(WidgetVertex), "WidgetWertex aligment requirements does not respect mappedsMemory requirements limit!");
@@ -159,18 +162,17 @@ void GUIRenderer::CreateResouces(VkExtent2D& copyImageExtentInfo)
 	samplerCreateInfo.maxLod = 0.0f;
 	s3DAssert(vkCreateSampler(DEVICE, &samplerCreateInfo, nullptr, &textureSampler), "Failed to create gui texture sampler!");
 
-		/************* Vertex Buffer Creation *************/
+	/************* Vertex Buffer Creation *************/
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = 600ULL;
+	bufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_KB * 6);
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER), "Failed to create gui vertexBuffer!");
 
 	/************* Index Buffer Creation *************/
-	//bufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_GUI_INDEX_BUFFER_DEFAULT);
-	//bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
-	//s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER), "Failed to create gui indexBuffer!");
+	bufferCreateInfo.size = static_cast<uint64_t>(MEMORY_SIZE_KB * 3);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	s3DAssert(MemoryManager::manager->createMemoryObject(&bufferCreateInfo, nullptr, s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER), "Failed to create gui indexBuffer!");
 
 	/************* Command Pool & Buffers Creation *************/
 	s3DAssert(commandPoolObject.createCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create gui commandPool!");
@@ -517,18 +519,25 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 	MemoryManager::manager->UnBindObjectFromMemory(MEMORY_ID_GUI_STAGING_BUFFER_TRANS, MEMORY_ID_GUI_HOST_VISIBLE_COHORENT);
 	MemoryManager::manager->deleteMemoryObject(MEMORY_ID_GUI_STAGING_BUFFER_TRANS);
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to hostVisible&CohorentMemory!");
+	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui vertexBuffer to hostVisible&CohorentMemory!");
 
-	WidgetVertex vertices[6]{};
+	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset));
+	pVertexMemory = reinterpret_cast<WidgetVertex*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset));
+
 	constexpr glm::vec3 color(0.0f, 0.0f, 0.0f);
 	const float width = static_cast<float>(swapchainObject.swapchainExtent.width);
 	const float height = static_cast<float>(swapchainObject.swapchainExtent.height);
-	vertices[0] = { glm::vec2(-width, -height), color };
-	vertices[1] = { glm::vec2(width, -height), color };
-	vertices[2] = { glm::vec2(width,  height), color };
-	vertices[3] = { glm::vec2(width,  height), color };
-	vertices[4] = { glm::vec2(-width,  height), color };
-	vertices[5] = { glm::vec2(-width, -height), color };
-	memcpy(pHostMemory, vertices, sizeof(WidgetVertex) * 6ULL);
+
+	WidgetVertex vertices[4]{
+		{ glm::vec2(-width, -height), color },
+		{ glm::vec2( width, -height), color },
+		{ glm::vec2( width,  height), color },
+		{ glm::vec2(-width,  height), color }
+	};
+	memcpy(pVertexMemory, vertices, sizeof(vertices));
+	
+	constexpr uint16_t indices[6]{ 0, 1, 2, 2, 3, 0 };
+	memcpy(pIndexMemory, indices, sizeof(indices));
 }
 
 /*
@@ -542,6 +551,7 @@ void GUIRenderer::BeginRender()
 	VkDeviceSize offsets{ 0 };
 	static const VkDevice device = DEVICE;
 	VkClearValue clearValues[2]{ {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} };
+	static const VkBuffer indexBuffer = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).buffer;
 	static const VkBuffer vertexBuffer = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).buffer;
 
 	vkWaitForFences(device, 1U, &inFlightFence, VK_TRUE, UINT64_MAX);
@@ -555,23 +565,28 @@ void GUIRenderer::BeginRender()
 	renderPassBeginInfo.framebuffer = frameBuffers[currentImageIndex];
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindVertexBuffers(commandBuffer, 0U, 1U, &vertexBuffer, &offsets);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, offScreenPipelineLayout, 0U, 1U, &offScreenDescriptorSet, 0U, nullptr);
+	vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0ULL, VK_INDEX_TYPE_UINT16);
 
-	vertexCount = 0U;
-	pWidgetMemory = reinterpret_cast<WidgetVertex*>(shiftTempPointer(pHostMemory, sizeof(WidgetVertex) * 6ULL));
+	indexCount = 0U;
+	vertexCount = 4U;
+	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, pIndexMemoryPlace));
+	pVertexMemory = reinterpret_cast<WidgetVertex*>(shiftTempPointer(pHostMemory, pVertexMemoryPlace));
 }
 
 void GUIRenderer::ActiveDynamicState() const
 {
-	if (vertexCount) 
+	if (indexCount) 
 	{
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, offScreenPipeline);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, offScreenPipelineLayout, 0U, 1U, &offScreenDescriptorSet, 0U, nullptr);
 		vkCmdPushConstants(commandBuffer, offScreenPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0U, static_cast<uint32_t>(sizeof(glm::vec2)), &projectionMatrix);
-		vkCmdDraw(commandBuffer, vertexCount, 1U, 6U, 0U);
+		vkCmdDrawIndexed(commandBuffer, indexCount, 1U, 6U, 0U, 0U);
 	}
 
-	vertexCount = 6U;
-	pWidgetMemory = reinterpret_cast<WidgetVertex*>(shiftTempPointer(pHostMemory, sizeof(WidgetVertex) * 6ULL));
+	indexCount = 6U;
+	vertexCount = 4U;
+	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, pIndexMemoryPlace));
+	pVertexMemory = reinterpret_cast<WidgetVertex*>(shiftTempPointer(pHostMemory, pVertexMemoryPlace));
 
 	vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, onScreenPipeline);
@@ -582,7 +597,7 @@ void GUIRenderer::ActiveDynamicState() const
 
 void GUIRenderer::EndRender()
 {
-	vkCmdDraw(commandBuffer, vertexCount, 1U, 0U, 0U);
+	vkCmdDrawIndexed(commandBuffer, indexCount, 1U, 0U, 0U, 0U);
 
 	static const VkQueue presentQueue = RenderPlatform::platform->presentQueue;
 	static const VkQueue graphicsQueue = RenderPlatform::platform->graphicsQueue;

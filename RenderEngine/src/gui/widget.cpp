@@ -2,10 +2,14 @@
 #include "..\RenderPlatform.hpp"
 //#include "glm/gtc/matrix_transform.hpp"
 
-
+extern uint32_t indexCount;
 extern uint32_t vertexCount;
-extern WidgetVertex* pWidgetMemory;
+extern uint16_t* pIndexMemory;
+extern WidgetVertex* pVertexMemory;
+
 static glm::vec2 screenCenter(0.0f, 0.0f);
+
+inline static uint16_t Indexer(uint16_t index) { return index + static_cast<uint16_t>(vertexCount); }
 
 void WidgetVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
 {
@@ -48,16 +52,20 @@ void setScreenCenter(float xPos, float yPos) { screenCenter = { xPos, yPos }; }
 void DrawSurface(glm::vec2 screenPosition, const glm::vec2& extent, const glm::vec3& color)
 {
 	screenPosition += screenCenter;
-	WidgetVertex vertices[6]{
+
+	const WidgetVertex vertices[4]{
 		{ screenPosition, color },
 		{ glm::vec2(screenPosition.x + extent.x, screenPosition.y), color },
 		{ screenPosition + extent, color },
-		{ screenPosition + extent, color },
 		{ glm::vec2(screenPosition.x, screenPosition.y + extent.y), color },
-		{ screenPosition, color }
 	};
-	memcpy(pWidgetMemory, vertices, sizeof(WidgetVertex) * 6ULL);
+	memcpy(pVertexMemory, vertices, sizeof(vertices));
 
-	vertexCount += 6U;
-	pWidgetMemory += 6ULL;
+	const uint16_t indices[6] = { Indexer(0ui16), Indexer(1ui16), Indexer(2ui16), Indexer(2ui16), Indexer(3ui16), Indexer(0ui16) };
+	memcpy(pIndexMemory, indices, sizeof(indices));
+
+	indexCount += 6ui16;
+	vertexCount += 4ui32;
+	pIndexMemory += 6ULL;
+	pVertexMemory += 4ULL;
 }
