@@ -25,7 +25,7 @@ inline constexpr s3DResult& operator|=(s3DResult& a, VkResult b) { return a = st
 
 inline void s3DAssert(s3DResult result, const char* message)  {
 	if (result != s3DResult::S3D_RESULT_SUCCESS)
-		throw std::runtime_error(message + std::to_string(result));
+		throw std::runtime_error(message + std::to_string(result << 32));
 };
 
 inline void s3DAssert(VkResult result, const char* message) {

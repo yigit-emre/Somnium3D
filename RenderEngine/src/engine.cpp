@@ -39,7 +39,6 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
 
 	guiRenderer = new GUIRenderer();
-	setScreenCenter(-guiRenderer->getSwapchainExtent().x / 2.0f, -guiRenderer->getSwapchainExtent().y / 2.0f);
 
 	bool singleTime = true;
 	while (!glfwWindowShouldClose(RenderPlatform::platform->window))
@@ -47,12 +46,13 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 		glfwPollEvents();
 		guiRenderer->BeginRender();
 
-		DrawSurface(glm::vec2(20.0f, 20.0f), glm::vec2(30.0f, 30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//DrawSurface(glm::vec2(20.0f, 20.0f), glm::vec2(30.0f, 30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		guiRenderer->ActiveStaticState();
 
 		if (singleTime)
 		{
-			DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			//DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			DrawText(glm::vec2(10.0f, 10.0f), glm::vec3(0.9f, 0.2f, 1.0f), 0.0f, 4.0f, "Hello");
 			singleTime = false;
 		}
 		
