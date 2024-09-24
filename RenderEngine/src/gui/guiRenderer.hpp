@@ -53,4 +53,5 @@ private:
 	void CreateDescriptors();
 	void BuildGraphicsPipeline();
 	void PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) const;
+	void FontBitMapDecoding() const;
 };

@@ -6,6 +6,8 @@ namespace gui
 {
 	struct CharFontInfo
 	{
+		glm::vec2 extent;
+
 		glm::vec2 texCoord0;
 		glm::vec2 texCoord1;
 		glm::vec2 texCoord2;

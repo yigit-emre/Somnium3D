@@ -46,41 +46,37 @@ void DrawSurface(const glm::vec2& screenPosition, const glm::vec2& extent, const
 	pVertexMemory += 4ULL;
 }
 
-void DrawText(glm::vec2 screenPosition, const glm::vec3& color, float rowLength, float fontSize, const char* text)
+void DrawText(glm::vec2 screenPosition, const glm::vec3& color, float fontSize, const char* text)
 {	
-	uint16_t indices[6]{};
-	gui::Vertex vertices[4]{};
+	const float startPosX = screenPosition.x;
 	for (uint32_t i = 0; (i < 40U) && (text[i] != 0); i++)
 	{
-		vertices[0].position = screenPosition;
-		vertices[1].position = screenPosition + glm::vec2(6.0f, 0.0f) * fontSize;
-		vertices[2].position = screenPosition + glm::vec2(6.0f, 8.0f) * fontSize;
-		vertices[3].position = screenPosition + glm::vec2(0.0f, 8.0f) * fontSize;
-		screenPosition.x += 8.0f * fontSize;
+		pVertexMemory->position = screenPosition;
+		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord0;
+		pVertexMemory++->color = color;
 
-		vertices[0].color = color;
-		vertices[1].color = color;
-		vertices[2].color = color;
-		vertices[3].color = color;
+		pVertexMemory->position = screenPosition + glm::vec2(pFontImageDecoder[text[i] - 32].extent.x, 0.0f) * fontSize;
+		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord1;
+		pVertexMemory++->color = color;
 
-		vertices[0].texCoord = pFontImageDecoder[text[i] - 32].texCoord0;
-		vertices[1].texCoord = pFontImageDecoder[text[i] - 32].texCoord1;
-		vertices[2].texCoord = pFontImageDecoder[text[i] - 32].texCoord2;
-		vertices[3].texCoord = pFontImageDecoder[text[i] - 32].texCoord3;
+		pVertexMemory->position = screenPosition + pFontImageDecoder[text[i] - 32].extent * fontSize;
+		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord2;
+		pVertexMemory++->color = color;
 
-		indices[0] = Indexer(0ui16);
-		indices[1] = Indexer(1ui16);
-		indices[2] = Indexer(2ui16);
-		indices[3] = Indexer(2ui16);
-		indices[4] = Indexer(3ui16);
-		indices[5] = Indexer(0ui16);
-			
-		memcpy(pIndexMemory, indices, sizeof(indices));
-		memcpy(pVertexMemory, vertices, sizeof(vertices));
+		pVertexMemory->position = screenPosition + glm::vec2(0.0f, pFontImageDecoder[text[i] - 32].extent.y) * fontSize;
+		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord3;
+		pVertexMemory++->color = color;
+	
+		screenPosition += (text[i] == '\n') ? glm::vec2(startPosX - screenPosition.x, 8.0f * fontSize) : glm::vec2(pFontImageDecoder[text[i] - 32].extent.x, 0.0f) * fontSize;
+
+		*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
+		*pIndexMemory++ = 1ui16 + static_cast<uint16_t>(vertexCount);
+		*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+		*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+		*pIndexMemory++ = 3ui16 + static_cast<uint16_t>(vertexCount);
+		*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
 
 		indexCount += 6ui16;
 		vertexCount += 4ui32;
-		pIndexMemory += 6ULL;
-		pVertexMemory += 4ULL;
 	}
 }

@@ -23,19 +23,7 @@ projectionMatrix(2.0f / static_cast<float>(swapchainObject.swapchainExtent.width
 	BuildGraphicsPipeline();
 	PreRenderSubmission(copyImageExtentInfo);
 
-	// ----------- FontImage Decoding -----------
-	float texCoordX, texCoordY;
-	pFontImageDecoder = new gui::CharFontInfo[95];
-	for (uint32_t i = 0; i < 95; i++)
-	{
-		texCoordX = static_cast<float>(i % 12) / 12.0f;
-		texCoordY = static_cast<float>(i / 12) / 8.0f;
-
-		pFontImageDecoder[i].texCoord0 = glm::vec2(texCoordX, texCoordY);
-		pFontImageDecoder[i].texCoord1 = glm::vec2(texCoordX + (1.0f / 12.0f), texCoordY);
-		pFontImageDecoder[i].texCoord2 = glm::vec2(texCoordX + (1.0f / 12.0f), texCoordY + (1.0f / 8.0f));
-		pFontImageDecoder[i].texCoord3 = glm::vec2(texCoordX, texCoordY + (1.0f / 8.0f));
-	}
+	FontBitMapDecoding();
 
 	// ----------- Rendering Preparations -----------
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -540,6 +528,46 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 	
 	constexpr uint16_t indices[6]{ 0, 1, 2, 2, 3, 0 };
 	memcpy(pIndexMemory, indices, sizeof(indices));
+}
+
+void GUIRenderer::FontBitMapDecoding() const
+{
+	float texCoordX, texCoordY, width;
+	pFontImageDecoder = new gui::CharFontInfo[95];
+	for (uint32_t i = 0; i < 95U; i++)
+	{
+		texCoordX = static_cast<float>(i % 12) / 12.0f;
+		texCoordY = static_cast<float>(i / 12) / 8.0f;
+
+		switch (i)
+		{
+		case 0: case 1: case 12: case 14: case 26: case 27: case 73: case 92:
+			width = 2.0f;
+			break;
+
+		case 2: case 10: case 70:
+			width = 5.0f;
+			break;
+
+		case 7: case 64: case 76:
+			width = 3.0f;
+			break;
+
+		case 41: case 59: case 84:
+			width = 4.0f;
+			break;
+
+		default:
+			width = 6.0f;
+			break;
+		}
+
+		pFontImageDecoder[i].extent = glm::vec2(width, 8.0f);
+		pFontImageDecoder[i].texCoord0 = glm::vec2(texCoordX, texCoordY);
+		pFontImageDecoder[i].texCoord1 = glm::vec2(texCoordX + width * (1.0f / 72.0f), texCoordY);
+		pFontImageDecoder[i].texCoord2 = glm::vec2(texCoordX + width * (1.0f / 72.0f), texCoordY + (1.0f / 8.0f));
+		pFontImageDecoder[i].texCoord3 = glm::vec2(texCoordX, texCoordY + (1.0f / 8.0f));
+	}
 }
 
 /*

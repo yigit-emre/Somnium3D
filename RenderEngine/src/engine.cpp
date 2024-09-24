@@ -52,7 +52,7 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 		if (singleTime)
 		{
 			//DrawSurface(glm::vec2(10.0f, 10.0f), glm::vec2(50.0f, 50.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-			DrawText(glm::vec2(10.0f, 10.0f), glm::vec3(0.9f, 0.2f, 1.0f), 0.0f, 4.0f, "Hello");
+			DrawText(glm::vec2(10.0f, 10.0f), glm::vec3(0.9f, 0.2f, 1.0f), 4.0f, "Hello Wolrd!");
 			singleTime = false;
 		}
 		
