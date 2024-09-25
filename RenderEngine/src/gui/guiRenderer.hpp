@@ -3,6 +3,9 @@
 #include "..\wrapper\SwapchainObject.hpp"
 #include "..\wrapper\CommandBufferObject.hpp"
 
+extern uint32_t indexCount;
+extern uint32_t onScreenIndexCount;
+
 class GUIRenderer
 {
 public:
@@ -12,7 +15,7 @@ public:
 	GUIRenderer(GUIRenderer&& move) noexcept = delete;
 
 	void BeginRender();
-	void ActiveStaticState();
+	inline void ActiveStaticState() { onScreenIndexCount = indexCount; }
 	void EndRender();
 
 	inline const glm::vec2 getSwapchainExtent() const { return { static_cast<float>(swapchainObject.swapchainExtent.width), static_cast<float>(swapchainObject.swapchainExtent.height) }; }

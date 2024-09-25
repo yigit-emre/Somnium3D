@@ -11,8 +11,11 @@ uint16_t* pIndexMemory;
 gui::Vertex* pVertexMemory;
 gui::CharFontInfo* pFontImageDecoder;
 
+float mouseX;
+float mouseY;
+glm::vec2 screenPosition;
+uint32_t onScreenIndexCount;
 static uint32_t currentImageIndex;
-static uint32_t onScreenIndexCount;
 
 GUIRenderer::GUIRenderer() : swapchainObject({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }, VK_PRESENT_MODE_FIFO_KHR), 
 projectionMatrix(2.0f / static_cast<float>(swapchainObject.swapchainExtent.width), 2.0f / static_cast<float>(swapchainObject.swapchainExtent.height))
@@ -140,9 +143,9 @@ void GUIRenderer::CreateResouces(VkExtent2D& copyImageExtentInfo)
 	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
 	samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	samplerCreateInfo.anisotropyEnable = VK_FALSE;
 	samplerCreateInfo.maxAnisotropy = 0.0f;
 	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
@@ -383,8 +386,14 @@ void GUIRenderer::BuildGraphicsPipeline()
 	scissor.extent = swapchainObject.swapchainExtent;
 
 	VkPipelineColorBlendAttachmentState  colorBlendAttachment{};
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
 
 	VkVertexInputBindingDescription bindingDescriptions[gui::getBindingCount()];
 	gui::getBindingDescriptions(bindingDescriptions);
@@ -418,7 +427,7 @@ void GUIRenderer::BuildGraphicsPipeline()
 
 	graphicsPipelineInfo->colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	graphicsPipelineInfo->colorBlendStateInfo.logicOpEnable = VK_FALSE;
-	graphicsPipelineInfo->colorBlendStateInfo.attachmentCount = 1;
+	graphicsPipelineInfo->colorBlendStateInfo.attachmentCount = 1U;
 	graphicsPipelineInfo->colorBlendStateInfo.pAttachments = &colorBlendAttachment;
 	
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
@@ -516,7 +525,7 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset));
 	pVertexMemory = reinterpret_cast<gui::Vertex*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset));
 
-	constexpr glm::vec2 texCoord(1.0f, 1.0f);
+	constexpr glm::vec2 texCoord(0.0f, 0.0f);
 	constexpr glm::vec3 color(0.0f, 0.0f, 0.0f);
 	gui::Vertex vertices[4]{
 		{ glm::vec2( 0.0f,   0.0f), texCoord, color },
@@ -533,8 +542,8 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 void GUIRenderer::FontBitMapDecoding() const
 {
 	float texCoordX, texCoordY, width;
-	pFontImageDecoder = new gui::CharFontInfo[95];
-	for (uint32_t i = 0; i < 95U; i++)
+	pFontImageDecoder = new gui::CharFontInfo[96];
+	for (uint32_t i = 0; i < 96U; i++)
 	{
 		texCoordX = static_cast<float>(i % 12) / 12.0f;
 		texCoordY = static_cast<float>(i / 12) / 8.0f;
@@ -585,11 +594,14 @@ void GUIRenderer::BeginRender()
 	vertexCount = 4U;
 	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, pIndexMemoryPlace));
 	pVertexMemory = reinterpret_cast<gui::Vertex*>(shiftTempPointer(pHostMemory, pVertexMemoryPlace));
-}
 
-void GUIRenderer::ActiveStaticState()
-{
-	onScreenIndexCount = indexCount;
+	screenPosition.x = 0.0f;
+	screenPosition.y = 0.0f;
+
+	double x = 0.0, y = 0.0;
+	glfwGetCursorPos(RenderPlatform::platform->window, &x, &y);
+	mouseX = static_cast<float>(mouseX);
+	mouseY = static_cast<float>(mouseY);
 }
 
 void GUIRenderer::EndRender()

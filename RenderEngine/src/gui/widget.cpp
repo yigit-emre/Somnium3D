@@ -9,74 +9,80 @@ extern uint16_t* pIndexMemory;
 extern gui::Vertex* pVertexMemory;
 extern gui::CharFontInfo* pFontImageDecoder;
 
-inline static uint16_t Indexer(uint16_t index) { return index + static_cast<uint16_t>(vertexCount); }
+extern float mouseX;
+extern float mouseY;
 
-static void getMousePosition(glm::vec2& position, const glm::vec2& extent, uint32_t id)
+void DrawBox(const glm::vec2& extent, const glm::vec3& color) 
 {
+	constexpr glm::vec2 texCoord(70.0f / 72.0f, 62.0f / 64.0f);
 
-	if (glfwGetMouseButton(RenderPlatform::platform->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) 
-	{
-		double mouseX = 0.0, mouseY = 0.0;
-		glfwGetCursorPos(RenderPlatform::platform->window, &mouseX, &mouseY);
-		if ((position.x <= static_cast<float>(mouseX)) && (static_cast<float>(mouseX) <= position.x + extent.x) && (position.y <= static_cast<float>(mouseY)) && (static_cast<float>(mouseY) <= position.y + extent.y))
-		{
-			position.x = static_cast<float>(mouseX);
-			position.y = static_cast<float>(mouseY);
-		}
-	}
-}
+	pVertexMemory->position = screenPosition;
+	pVertexMemory->texCoord = texCoord;
+	pVertexMemory++->color = color;
 
-void DrawSurface(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color)
-{
-	constexpr glm::vec2 texCoord(1.0f, 1.0f);
-	const gui::Vertex vertices[4]{
-		{ screenPosition, texCoord, color },
-		{ glm::vec2(screenPosition.x + extent.x, screenPosition.y), texCoord, color },
-		{ screenPosition + extent, texCoord, color },
-		{ glm::vec2(screenPosition.x, screenPosition.y + extent.y), texCoord, color },
-	};
-	memcpy(pVertexMemory, vertices, sizeof(vertices));
+	pVertexMemory->position = screenPosition + glm::vec2(extent.x, 0.0f);
+	pVertexMemory->texCoord = texCoord;
+	pVertexMemory++->color = color;
 
-	const uint16_t indices[6] = { Indexer(0ui16), Indexer(1ui16), Indexer(2ui16), Indexer(2ui16), Indexer(3ui16), Indexer(0ui16) };
-	memcpy(pIndexMemory, indices, sizeof(indices));
+	pVertexMemory->position = screenPosition + extent;
+	pVertexMemory->texCoord = texCoord;
+	pVertexMemory++->color = color;
+
+	pVertexMemory->position = screenPosition + glm::vec2(0.0f, extent.y);
+	pVertexMemory->texCoord = texCoord;
+	pVertexMemory++->color = color;
+
+	*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 1ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 3ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
 
 	indexCount += 6ui16;
 	vertexCount += 4ui32;
-	pIndexMemory += 6ULL;
-	pVertexMemory += 4ULL;
 }
 
-void DrawText(glm::vec2 screenPosition, const glm::vec3& color, float fontSize, const char* text)
-{	
-	const float startPosX = screenPosition.x;
-	for (uint32_t i = 0; (i < 40U) && (text[i] != 0); i++)
+void DrawCharFromFontImage(int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color)
+{
+	pVertexMemory->position = screenPosition;
+	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord0;
+	pVertexMemory++->color = color;
+
+	pVertexMemory->position = screenPosition + glm::vec2(pFontImageDecoder[character - 32].extent.x, 0.0f) * extent.x;
+	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord1;
+	pVertexMemory++->color = color;
+
+	pVertexMemory->position = screenPosition + pFontImageDecoder[character - 32].extent * extent;
+	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord2;
+	pVertexMemory++->color = color;
+
+	pVertexMemory->position = screenPosition + glm::vec2(0.0f, pFontImageDecoder[character - 32].extent.y) * extent.y;
+	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord3;
+	pVertexMemory++->color = color;
+
+	screenPosition += (character == '\n') ? glm::vec2(startPosX - screenPosition.x, 8.0f * extent.y) : glm::vec2(pFontImageDecoder[character - 32].extent.x * extent.x, 0.0f);
+
+	*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 1ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 3ui16 + static_cast<uint16_t>(vertexCount);
+	*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
+
+	indexCount += 6ui16;
+	vertexCount += 4ui32;
+}
+
+bool gui::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent)
+{
+	if (position.x <= static_cast<float>(mouseX) && static_cast<float>(mouseX) <= position.x + extent.x && position.y <= static_cast<float>(mouseX) && static_cast<float>(mouseX) <= position.y + extent.y)
 	{
-		pVertexMemory->position = screenPosition;
-		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord0;
-		pVertexMemory++->color = color;
-
-		pVertexMemory->position = screenPosition + glm::vec2(pFontImageDecoder[text[i] - 32].extent.x, 0.0f) * fontSize;
-		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord1;
-		pVertexMemory++->color = color;
-
-		pVertexMemory->position = screenPosition + pFontImageDecoder[text[i] - 32].extent * fontSize;
-		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord2;
-		pVertexMemory++->color = color;
-
-		pVertexMemory->position = screenPosition + glm::vec2(0.0f, pFontImageDecoder[text[i] - 32].extent.y) * fontSize;
-		pVertexMemory->texCoord = pFontImageDecoder[text[i] - 32].texCoord3;
-		pVertexMemory++->color = color;
-	
-		screenPosition += (text[i] == '\n') ? glm::vec2(startPosX - screenPosition.x, 8.0f * fontSize) : glm::vec2(pFontImageDecoder[text[i] - 32].extent.x, 0.0f) * fontSize;
-
-		*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
-		*pIndexMemory++ = 1ui16 + static_cast<uint16_t>(vertexCount);
-		*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
-		*pIndexMemory++ = 2ui16 + static_cast<uint16_t>(vertexCount);
-		*pIndexMemory++ = 3ui16 + static_cast<uint16_t>(vertexCount);
-		*pIndexMemory++ = 0ui16 + static_cast<uint16_t>(vertexCount);
-
-		indexCount += 6ui16;
-		vertexCount += 4ui32;
+		glm::vec2 oldScreenPosition = screenPosition;
+		screenPosition = position;
+		DrawCharFromFontImage(127, screenPosition.x, extent / glm::vec2(6.0f, 8.0f), glm::vec3(113.0f / 255.0f, 97.0f / 255.0f, 233.0f / 255.0f));
+		screenPosition = oldScreenPosition;
+		return glfwGetMouseButton(RenderPlatform::platform->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
 	}
+	return false;
 }
