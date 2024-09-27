@@ -19,70 +19,73 @@ CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
 	* Optimized PipelineMaker
 */
 
-enum GUIEnums : uint32_t
+namespace gui
 {
-	GUI_ENUM_NULL,
-	GUI_ENUM_WINDOW_ONE,
-	GUI_ENUM_WINDOW_TWO,
-};
-
-static void guiStuff() 
-{
-	bool offScreenState = true;
-	constexpr glm::vec2 menu1_TextExtent = gui::GetTextExtent("Menu1", 2.0f);
-	constexpr glm::vec2 menu2_TextExtent = gui::GetTextExtent("Menu2", 2.0f);
-	GUIEnums guiEnums = GUI_ENUM_NULL;
-
-
-	while (!glfwWindowShouldClose(RenderPlatform::platform->window))
+	enum GUIEnums : uint32_t
 	{
-		glfwPollEvents();
-		guiRenderer->BeginRender();
-		if (gui::DrawClickableBox(glm::vec2(10.0f, 10.0f), menu1_TextExtent))
-		{
-			offScreenState = true;
-			guiEnums = GUI_ENUM_WINDOW_ONE;
-		}
+		GUI_ENUM_NULL,
+		GUI_ENUM_SELECTION_MENU1,
+		GUI_ENUM_SELECTION_MENU2,
+		GUI_ENUM_SELECTION_MENU3,
+		GUI_ENUM_SELECTION_MENU4
+	};
 
-		if (gui::DrawClickableBox(glm::vec2(30.0f + menu1_TextExtent.x, 10.0f), menu2_TextExtent))
-		{
-			offScreenState = true;
-			guiEnums = GUI_ENUM_WINDOW_TWO;
-		}
+	static void DemoScreen()
+	{
+		bool offScreenState = true;
+		GUIEnums guiEnums = GUI_ENUM_NULL;
+		constexpr guiTool::ClickBoxQueueItem clickBoxQueue[] = { 
+			{glm::vec2(86.0f,  20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU1},
+			{glm::vec2(166.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU2},
+			{glm::vec2(246.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU3},
+			{glm::vec2(326.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU4}
+		};
 
-		switch (guiEnums)
+		while (!glfwWindowShouldClose(RenderPlatform::platform->window))
 		{
-		case GUI_ENUM_WINDOW_ONE: case GUI_ENUM_WINDOW_TWO:
-			gui::DrawSurface(glm::vec2(8.0f, 10.0f + menu2_TextExtent.y), glm::vec2(menu1_TextExtent.x + menu2_TextExtent.x + 40.0f, 160.0f), glm::vec3(0.2f, 0.2f, 0.2f), true, false);
-			break;
-		}
+			glfwPollEvents();
+			guiRenderer->BeginRender();
+			widget::DrawSurface(glm::vec2(15.0f, 15.0f), glm::vec2(1000.0f, 600.0f), glm::vec3(0.05f, 0.05f, 0.05f), false);
 
-		guiRenderer->ActiveStaticState();
+			if (guiEnums = static_cast<GUIEnums>(guiTool::QueryClickBoxes(clickBoxQueue))) 
+				offScreenState = true;
 
-		if (offScreenState)
-		{
-			switch (guiEnums)
+			guiRenderer->ActiveStaticState();
+
+			if (offScreenState)
 			{
-			case GUI_ENUM_WINDOW_ONE:
-				gui::DrawText(glm::vec2(10.0f, menu1_TextExtent.y + 18.0f), "Welcome!", 2.0f, glm::vec3(0.3f, 0.7f, 1.0f));
-				break;
+				switch (guiEnums)
+				{
+				case GUI_ENUM_SELECTION_MENU1:
+					break;
 
-			case GUI_ENUM_WINDOW_TWO:
-				gui::DrawText(glm::vec2(10.0f, menu1_TextExtent.y + 18.0f), "Welcome!", 2.0f, glm::vec3(0.4f, 0.0f, 0.6f));
-				break;
+				case GUI_ENUM_SELECTION_MENU2:
+					break;
 
-			default:
-				gui::DrawText(glm::vec2(10.0f, 10.0f), "Menu1", 2.0f, glm::vec3(0.1f, 0.1f, 1.0f));
-				gui::DrawText(glm::vec2(30.0f + menu1_TextExtent.x, 10.0f), "Menu2", 2.0f, glm::vec3(0.1f, 0.1f, 1.0f));
-				break;
+				case GUI_ENUM_SELECTION_MENU3:
+					break;
+
+				case GUI_ENUM_SELECTION_MENU4:
+					break;
+
+				default:
+					widget::DrawText(glm::vec2(20.0f, 20.0f), "s3D", 2.0f, glm::vec3(1.0f, 100.0f / 255.0f, 0.0f));
+					widget::DrawText(glm::vec2(86.0f, 20.0f), "Menu1", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(166.0f, 20.0f), "Menu2", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(246.0f, 20.0f), "Menu3", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(326.0f, 20.0f), "Menu4", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					break;
+				}
+				offScreenState = false;
 			}
-			offScreenState = false;
+
+			guiRenderer->EndRender();
 		}
-		
-		guiRenderer->EndRender();
+		vkDeviceWaitIdle(DEVICE);
 	}
-	vkDeviceWaitIdle(DEVICE);
 }
+
+
 
 
 S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSelection)
@@ -105,7 +108,7 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
 
 	guiRenderer = new GUIRenderer();
-	guiStuff();
+	gui::DemoScreen();
 }
 
 S3D_API void s3DTerminateRenderEngine()

@@ -1,13 +1,13 @@
 #include "Vertex.hpp"
 
-void gui::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
+void guiVertex::getBindingDescriptions(VkVertexInputBindingDescription* pBindings)
 {
 	pBindings[0].binding = 0U;
-	pBindings[0].stride = sizeof(gui::Vertex);
+	pBindings[0].stride = sizeof(guiVertex::Vertex);
 	pBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 }
 
-void gui::getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes)
+void guiVertex::getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes)
 {
 	pAttributes[0].binding = 0U;
 	pAttributes[0].location = 0U;

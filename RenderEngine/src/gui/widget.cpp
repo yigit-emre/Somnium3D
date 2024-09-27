@@ -5,15 +5,15 @@
 extern uint32_t indexCount;
 extern uint32_t vertexCount;
 extern uint16_t* pIndexMemory;
-extern gui::Vertex* pVertexMemory;
-extern gui::CharFontInfo* pFontImageDecoder;
+extern guiVertex::Vertex* pVertexMemory;
+extern guiVertex::CharFontInfo* pFontImageDecoder;
 
 extern float mouseX;
 extern float mouseY;
 
-void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank)
+void widget::DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank)
 {
-	const glm::vec2 texCoord = isBlank ? glm::vec2(0.0f, 0.0f) : glm::vec2(70.0f / 72.0f, 62.0f / 64.0f);
+	const glm::vec2 texCoord = isBlank ? glm::vec2(0.0f, 0.0f) : glm::vec2(71.0f / 72.0f, 63.0f / 64.0f);
 
 	pVertexMemory->position = screenPosition;
 	pVertexMemory->texCoord = texCoord;
@@ -42,7 +42,7 @@ void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm
 	vertexCount += 4ui32;
 }
 
-void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color)
+void widget::DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color)
 {
 	pVertexMemory->position = screenPosition;
 	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord0;
@@ -73,7 +73,7 @@ void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float
 	vertexCount += 4ui32;
 }
 
-bool gui::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding)
+bool widget::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding)
 {
 	if (position.x <= mouseX && mouseX <= position.x + extent.x && position.y <= mouseY && mouseY <= position.y + extent.y)
 	{

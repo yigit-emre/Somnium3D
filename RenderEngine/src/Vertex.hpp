@@ -2,7 +2,7 @@
 #include "glm/glm.hpp"
 #include "vulkan/vulkan.h"
 
-namespace gui
+namespace guiVertex
 {
 	struct CharFontInfo
 	{
@@ -27,4 +27,3 @@ namespace gui
 	void getBindingDescriptions(VkVertexInputBindingDescription* pBindings);
 	void getAttributeDescriptions(VkVertexInputAttributeDescription* pAttributes);
 }
-

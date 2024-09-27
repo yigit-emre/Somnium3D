@@ -1,26 +1,26 @@
 #pragma once
 #include "glm/glm.hpp"
 
-void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank);
-void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color);
 
-namespace gui
+namespace widget
 {
+    void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank);
     bool DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding = { 2.0f, 2.0f });
+    void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color);
 
-	inline void DrawSurface(const glm::vec2& screenPositon, const glm::vec2& extent, const glm::vec3& color, bool isBordered, bool canPlaceOn) 
+    inline void DrawText(const glm::vec2& screenPosition, const char* text, float fontSize, const glm::vec3& color)
+    {
+        glm::vec2 position = screenPosition;
+        for (uint32_t i = 0; text[i] != 0; i++)
+            DrawCharFromFontImage(position, text[i], screenPosition.x, glm::vec2(fontSize, fontSize), color);
+    }
+
+	inline void DrawSurface(const glm::vec2& screenPositon, const glm::vec2& extent, const glm::vec3& color, bool isBordered, bool canPlaceOn = false) 
 	{
         if (isBordered) 
             DrawBox(screenPositon, extent + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
-        DrawBox(isBordered ? screenPositon : screenPositon + glm::vec2(1.0f, 1.0f), extent, color, canPlaceOn);
+        DrawBox(isBordered ? screenPositon + glm::vec2(1.0f, 1.0f) : screenPositon, extent, color, canPlaceOn);
 	};
-
-	inline void DrawText(const glm::vec2& screenPosition, const char* text, float fontSize, const glm::vec3& color) 
-	{
-        glm::vec2 position = screenPosition;
-		for (uint32_t i = 0; text[i] != 0; i++)
-			DrawCharFromFontImage(position, text[i], screenPosition.x, glm::vec2(fontSize, fontSize), color);
-	}
 
     template<std::size_t N>
     constexpr glm::vec2 GetTextExtent(const char(&text)[N], float fontSize = 2.0f)
@@ -58,5 +58,26 @@ namespace gui
             }
         }
         return glm::vec2((maxWidth < width) ? width : maxWidth, height);
+    }
+}
+
+namespace guiTool
+{
+    struct ClickBoxQueueItem
+    {
+        const glm::vec2 position;
+        const glm::vec2 extent;
+        const uint32_t enumValue;
+    };
+
+    template<std::size_t N>
+    inline const uint32_t QueryClickBoxes(const ClickBoxQueueItem(&queue)[N]) 
+    {
+        for (uint32_t i = 0U; i < N; i++) 
+        {
+            if (widget::DrawClickableBox(queue[i].position, queue[i].extent))
+                return queue[i].enumValue;
+        }
+        return 0U;
     }
 }

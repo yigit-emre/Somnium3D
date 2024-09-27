@@ -8,8 +8,8 @@
 uint32_t indexCount;
 uint32_t vertexCount;
 uint16_t* pIndexMemory;
-gui::Vertex* pVertexMemory;
-gui::CharFontInfo* pFontImageDecoder;
+guiVertex::Vertex* pVertexMemory;
+guiVertex::CharFontInfo* pFontImageDecoder;
 
 float mouseX;
 float mouseY;
@@ -83,7 +83,7 @@ void GUIRenderer::CreateResouces(VkExtent2D& copyImageExtentInfo)
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, s3DMemoryEnum::MEMORY_SIZE_KB * 16U, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT), "Failed to create gui hostVisible&CohorentMemory!");
 	s3DAssert(MemoryManager::manager->createPhysicalMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, s3DMemoryEnum::MEMORY_SIZE_MB * 6U, s3DMemoryEnum::MEMORY_ID_GUI_DEVICE_LOCAL), "Failed to create gui deviceLocalMemory!");
 	s3DAssert(MemoryManager::manager->MapPhysicalMemory(s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, &pHostMemory), "Failed to map gui hostVisible&CohorentMemory!");
-	s3DAssert(RenderPlatform::platform->minMappedMemoryAlignmentLimit < alignof(gui::Vertex), "WidgetWertex aligment requirements does not respect mappedsMemory requirements limit!");
+	s3DAssert(RenderPlatform::platform->minMappedMemoryAlignmentLimit < alignof(guiVertex::Vertex), "WidgetWertex aligment requirements does not respect mappedsMemory requirements limit!");
 
 	/************* OffScreen Render Target Creation *************/
 	VkImageCreateInfo imageCreateInfo{};
@@ -388,10 +388,10 @@ void GUIRenderer::BuildGraphicsPipeline()
 	colorBlendAttachment.blendEnable = VK_FALSE;
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-	VkVertexInputBindingDescription bindingDescriptions[gui::getBindingCount()];
-	gui::getBindingDescriptions(bindingDescriptions);
-	VkVertexInputAttributeDescription attributeDescriptions[gui::getAttributeCount()];
-	gui::getAttributeDescriptions(attributeDescriptions);
+	VkVertexInputBindingDescription bindingDescriptions[guiVertex::getBindingCount()];
+	guiVertex::getBindingDescriptions(bindingDescriptions);
+	VkVertexInputAttributeDescription attributeDescriptions[guiVertex::getAttributeCount()];
+	guiVertex::getAttributeDescriptions(attributeDescriptions);
 
 	GrapchicsPipelineInfo* graphicsPipelineInfo = new GrapchicsPipelineInfo(true);
 
@@ -400,9 +400,9 @@ void GUIRenderer::BuildGraphicsPipeline()
 	graphicsPipelineInfo->hasTessellationState = VK_FALSE;
 
 	graphicsPipelineInfo->vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	graphicsPipelineInfo->vertexInputStateInfo.vertexBindingDescriptionCount = gui::getBindingCount();
+	graphicsPipelineInfo->vertexInputStateInfo.vertexBindingDescriptionCount = guiVertex::getBindingCount();
 	graphicsPipelineInfo->vertexInputStateInfo.pVertexBindingDescriptions = bindingDescriptions;
-	graphicsPipelineInfo->vertexInputStateInfo.vertexAttributeDescriptionCount = gui::getAttributeCount();
+	graphicsPipelineInfo->vertexInputStateInfo.vertexAttributeDescriptionCount = guiVertex::getAttributeCount();
 	graphicsPipelineInfo->vertexInputStateInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
 	graphicsPipelineInfo->viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -516,11 +516,11 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 	s3DAssert(MemoryManager::manager->BindObjectToMemory(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER, s3DMemoryEnum::MEMORY_ID_GUI_HOST_VISIBLE_COHORENT, nullptr), "Failed to bind gui indexBuffer to hostVisible&CohorentMemory!");
 
 	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset));
-	pVertexMemory = reinterpret_cast<gui::Vertex*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset));
+	pVertexMemory = reinterpret_cast<guiVertex::Vertex*>(shiftTempPointer(pHostMemory, MemoryManager::manager->getMemoryObject(MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset));
 
 	constexpr glm::vec2 texCoord(0.0f, 0.0f);
 	constexpr glm::vec3 color(0.0f, 0.0f, 0.0f);
-	gui::Vertex vertices[4]{
+	guiVertex::Vertex vertices[4]{
 		{ glm::vec2( 0.0f,   0.0f), texCoord, color },
 		{ glm::vec2(static_cast<float>(swapchainObject.swapchainExtent.width),  0.0f), texCoord, color },
 		{ glm::vec2(static_cast<float>(swapchainObject.swapchainExtent.width),  static_cast<float>(swapchainObject.swapchainExtent.height)), texCoord, color },
@@ -535,7 +535,7 @@ void GUIRenderer::PreRenderSubmission(const VkExtent2D& copyImageExtentInfo) con
 void GUIRenderer::FontBitMapDecoding() const
 {
 	float texCoordX, texCoordY, width;
-	pFontImageDecoder = new gui::CharFontInfo[95];
+	pFontImageDecoder = new guiVertex::CharFontInfo[95];
 	for (uint32_t i = 0; i < 95U; i++)
 	{
 		texCoordX = static_cast<float>(i % 12) / 12.0f;
@@ -581,12 +581,12 @@ void GUIRenderer::FontBitMapDecoding() const
 void GUIRenderer::BeginRender()
 {
 	static const uint32_t pIndexMemoryPlace = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_INDEX_BUFFER).memoryPlace.startOffset + sizeof(uint16_t) * 6U;
-	static const uint32_t pVertexMemoryPlace = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset + sizeof(gui::Vertex) * 4U;
+	static const uint32_t pVertexMemoryPlace = MemoryManager::manager->getMemoryObject(s3DMemoryEnum::MEMORY_ID_GUI_VERTEX_BUFFER).memoryPlace.startOffset + sizeof(guiVertex::Vertex) * 4U;
 
 	indexCount = 6U;
 	vertexCount = 4U;
 	pIndexMemory = reinterpret_cast<uint16_t*>(shiftTempPointer(pHostMemory, pIndexMemoryPlace));
-	pVertexMemory = reinterpret_cast<gui::Vertex*>(shiftTempPointer(pHostMemory, pVertexMemoryPlace));
+	pVertexMemory = reinterpret_cast<guiVertex::Vertex*>(shiftTempPointer(pHostMemory, pVertexMemoryPlace));
 
 	double x, y;
 	glfwGetCursorPos(RenderPlatform::platform->window, &x, &y);
