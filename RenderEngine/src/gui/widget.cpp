@@ -1,7 +1,6 @@
 #include "widget.hpp"
 #include "..\Vertex.hpp"
 #include "..\RenderPlatform.hpp"
-//#include "glm/gtc/matrix_transform.hpp"
 
 extern uint32_t indexCount;
 extern uint32_t vertexCount;
@@ -12,9 +11,9 @@ extern gui::CharFontInfo* pFontImageDecoder;
 extern float mouseX;
 extern float mouseY;
 
-void DrawBox(const glm::vec2& extent, const glm::vec3& color) 
+void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank)
 {
-	constexpr glm::vec2 texCoord(70.0f / 72.0f, 62.0f / 64.0f);
+	const glm::vec2 texCoord = isBlank ? glm::vec2(0.0f, 0.0f) : glm::vec2(70.0f / 72.0f, 62.0f / 64.0f);
 
 	pVertexMemory->position = screenPosition;
 	pVertexMemory->texCoord = texCoord;
@@ -43,7 +42,7 @@ void DrawBox(const glm::vec2& extent, const glm::vec3& color)
 	vertexCount += 4ui32;
 }
 
-void DrawCharFromFontImage(int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color)
+void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color)
 {
 	pVertexMemory->position = screenPosition;
 	pVertexMemory->texCoord = pFontImageDecoder[character - 32].texCoord0;
@@ -74,15 +73,14 @@ void DrawCharFromFontImage(int character, const float startPosX, const glm::vec2
 	vertexCount += 4ui32;
 }
 
-bool gui::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent)
+bool gui::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding)
 {
-	if (position.x <= static_cast<float>(mouseX) && static_cast<float>(mouseX) <= position.x + extent.x && position.y <= static_cast<float>(mouseX) && static_cast<float>(mouseX) <= position.y + extent.y)
+	if (position.x <= mouseX && mouseX <= position.x + extent.x && position.y <= mouseY && mouseY <= position.y + extent.y)
 	{
-		glm::vec2 oldScreenPosition = screenPosition;
-		screenPosition = position;
-		DrawCharFromFontImage(127, screenPosition.x, extent / glm::vec2(6.0f, 8.0f), glm::vec3(113.0f / 255.0f, 97.0f / 255.0f, 233.0f / 255.0f));
-		screenPosition = oldScreenPosition;
-		return glfwGetMouseButton(RenderPlatform::platform->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+		const bool result = glfwGetMouseButton(RenderPlatform::platform->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+		DrawBox(position - borderPadding - glm::vec2(1.0f, 1.0f), extent + borderPadding * 2.0f + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
+		DrawBox(position - borderPadding, extent + borderPadding * 2.0f, result ? glm::vec3(0.1f, 0.1f, 0.1f) : glm::vec3(0.2f, 0.2f, 0.2f), false);
+		return result;
 	}
 	return false;
 }

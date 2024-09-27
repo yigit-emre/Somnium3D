@@ -1,15 +1,29 @@
 #pragma once
 #include "glm/glm.hpp"
 
-extern glm::vec2 screenPosition;
-
-void DrawBox(const glm::vec2& extent, const glm::vec3& color);
-void DrawCharFromFontImage(int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color);
+void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank);
+void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color);
 
 namespace gui
 {
+    bool DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding = { 2.0f, 2.0f });
+
+	inline void DrawSurface(const glm::vec2& screenPositon, const glm::vec2& extent, const glm::vec3& color, bool isBordered, bool canPlaceOn) 
+	{
+        if (isBordered) 
+            DrawBox(screenPositon, extent + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
+        DrawBox(isBordered ? screenPositon : screenPositon + glm::vec2(1.0f, 1.0f), extent, color, canPlaceOn);
+	};
+
+	inline void DrawText(const glm::vec2& screenPosition, const char* text, float fontSize, const glm::vec3& color) 
+	{
+        glm::vec2 position = screenPosition;
+		for (uint32_t i = 0; text[i] != 0; i++)
+			DrawCharFromFontImage(position, text[i], screenPosition.x, glm::vec2(fontSize, fontSize), color);
+	}
+
     template<std::size_t N>
-    constexpr glm::vec2 GetTextExtent(const char(&text)[N], float fontSize)
+    constexpr glm::vec2 GetTextExtent(const char(&text)[N], float fontSize = 2.0f)
     {
         float width = 0.0f, height = 8.0f * fontSize, maxWidth = 0.0f;
         for (std::size_t i = 0; i < N - 1; ++i)
@@ -45,24 +59,4 @@ namespace gui
         }
         return glm::vec2((maxWidth < width) ? width : maxWidth, height);
     }
-
-	inline void SetWidgetPosition(const glm::vec2& position) { screenPosition = position; }
-
-	inline void DrawSurface(const glm::vec2& extent, const glm::vec3& color) 
-	{
-		screenPosition += glm::vec2(0.0f, 4.0f);
-		DrawBox(extent, color);
-		screenPosition += glm::vec2(0.0f, extent.y);
-	};
-
-	inline void DrawText(const char* text, float fontSize, const glm::vec3& color) 
-	{
-        const float startPosX = screenPosition.x;
-		screenPosition += glm::vec2(0.0f, 4.0f);
-		for (uint32_t i = 0; text[i] != 0; i++)
-			DrawCharFromFontImage(text[i], startPosX, glm::vec2(fontSize, fontSize), color);
-        screenPosition = glm::vec2(startPosX, screenPosition.y + 8.0f * fontSize);
-	}
-
-	bool DrawClickableBox(const glm::vec2& position, const glm::vec2& extent);
 }
