@@ -24,7 +24,7 @@
     <ClInclude Include="includeEXT\engine.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\RenderPlatform.hpp">
+    <ClInclude Include="src\VulkanContext.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gui\guiRenderer.hpp">
@@ -62,7 +62,7 @@
     <ClCompile Include="src\engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\RenderPlatform.cpp">
+    <ClCompile Include="src\VulkanContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\guiRenderer.cpp">

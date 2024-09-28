@@ -1,4 +1,4 @@
-#include "..\RenderPlatform.hpp"
+#include "..\VulkanContext.hpp"
 #include "Memory.hpp"
 
 /*
@@ -119,7 +119,7 @@ PhysicalMemory::PhysicalMemory(PhysicalMemory&& move) noexcept : memory(move.mem
 PhysicalMemory::PhysicalMemory(VkMemoryPropertyFlags typeFlag, uint32_t size, s3DResult& result) : totalMemorySize(size), memoryAllocater()
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(RenderPlatform::platform->physicalDevice, &memProperties);
+	vkGetPhysicalDeviceMemoryProperties(VulkanContext::context->physicalDevice, &memProperties);
 
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

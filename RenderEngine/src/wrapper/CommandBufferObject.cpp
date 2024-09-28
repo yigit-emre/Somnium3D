@@ -1,5 +1,5 @@
 #include "CommandBufferObject.hpp"
-#include "..\RenderPlatform.hpp"
+#include "..\VulkanContext.hpp"
 
 s3DResult CommandPoolObject::createCommandPool(VkCommandPoolCreateFlagBits flag, uint32_t queueFamilyIndex)
 {
@@ -62,7 +62,7 @@ s3DResult EndQuickSubmission(VkCommandBuffer& commandBuffer, VkFence& fence)
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
-	if(VkResult result = vkQueueSubmit(RenderPlatform::platform->graphicsQueue, 1, &submitInfo, fence))
+	if(VkResult result = vkQueueSubmit(vulkanGraphicsContext.graphicsQueue, 1, &submitInfo, fence))
 		return s3DResult::S3D_RESULT_QUICK_SUBMISSION_QUEUE_SUBMIT_ERROR | result;
 
 	vkWaitForFences(DEVICE, 1, &fence, VK_TRUE, UINT64_MAX);

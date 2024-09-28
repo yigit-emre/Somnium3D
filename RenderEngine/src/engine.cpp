@@ -2,13 +2,13 @@
 #include "engine.hpp"
 #include "FileIO.hpp"
 #include "gui/widget.hpp"
+#include "VulkanContext.hpp"
 #include "wrapper/Memory.hpp"
-#include "RenderPlatform.hpp"
 #include "gui/guiRenderer.hpp"
 
 static GUIRenderer* guiRenderer = nullptr;
 MemoryManager* MemoryManager::manager = nullptr;
-const RenderPlatform* RenderPlatform::platform = nullptr;
+const VulkanContext* VulkanContext::context = nullptr;
 CommandPoolObject* graphicsFamilyCommandPoolST = nullptr;
 
 /*		TODO LIST
@@ -34,18 +34,18 @@ namespace gui
 	{
 		bool offScreenState = true;
 		GUIEnums guiEnums = GUI_ENUM_NULL;
-		constexpr guiTool::ClickBoxQueueItem clickBoxQueue[] = { 
-			{glm::vec2(86.0f,  20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU1},
-			{glm::vec2(166.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU2},
-			{glm::vec2(246.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU3},
-			{glm::vec2(326.0f, 20.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU4}
+		static constexpr const guiTool::ClickBoxQueueItem clickBoxQueue[] = { 
+			{glm::vec2(76.0f,  10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU1},
+			{glm::vec2(156.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU2},
+			{glm::vec2(236.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU3},
+			{glm::vec2(326.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU4}
 		};
 
-		while (!glfwWindowShouldClose(RenderPlatform::platform->window))
+		while (!glfwWindowShouldClose(vulkanGraphicsContext.window))
 		{
 			glfwPollEvents();
 			guiRenderer->BeginRender();
-			widget::DrawSurface(glm::vec2(15.0f, 15.0f), glm::vec2(1000.0f, 600.0f), glm::vec3(0.05f, 0.05f, 0.05f), false);
+			widget::DrawBox(glm::vec2(0.0f, 0.0f), glm::vec2(static_cast<float>(vulkanGraphicsContext.windowWidth), static_cast<float>(vulkanGraphicsContext.windowHeight)), glm::vec3(0.05f, 0.05f, 0.05f), false);
 
 			if (guiEnums = static_cast<GUIEnums>(guiTool::QueryClickBoxes(clickBoxQueue))) 
 				offScreenState = true;
@@ -69,11 +69,11 @@ namespace gui
 					break;
 
 				default:
-					widget::DrawText(glm::vec2(20.0f, 20.0f), "s3D", 2.0f, glm::vec3(1.0f, 100.0f / 255.0f, 0.0f));
-					widget::DrawText(glm::vec2(86.0f, 20.0f), "Menu1", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(166.0f, 20.0f), "Menu2", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(246.0f, 20.0f), "Menu3", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(326.0f, 20.0f), "Menu4", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(10.0f, 10.0f), "s3D", 2.0f, glm::vec3(1.0f, 100.0f / 255.0f, 0.0f));
+					widget::DrawText(glm::vec2(76.0f, 10.0f), "Menu1", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(156.0f, 10.0f), "Menu2", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(236.0f, 10.0f), "Menu3", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(326.0f, 10.0f), "Menu4", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
 					break;
 				}
 				offScreenState = false;
@@ -92,7 +92,7 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 {
 	const char* extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-	RenderPlatformInfo platformInfo{};
+	PlatformContextInfo platformInfo{};
 	platformInfo.windowWidth = winInfo.windowWidth;
 	platformInfo.windowHeight = winInfo.windowHeight;
 	platformInfo.windowName = winInfo.windowName;
@@ -101,11 +101,11 @@ S3D_API void s3DInitRenderEngine(AppWindowCreateInfo& winInfo, bool manuelGpuSel
 	platformInfo.extensions = extensions;
 	platformInfo.features.samplerAnisotropy = VK_TRUE;
 
-	RenderPlatform::platform = new RenderPlatform(platformInfo, true);
+	VulkanContext::context = new VulkanContext(platformInfo, true);
 	MemoryManager::manager = new MemoryManager();
 	graphicsFamilyCommandPoolST = new CommandPoolObject();
 
-	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, RenderPlatform::platform->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
+	s3DAssert(graphicsFamilyCommandPoolST->createCommandPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, VulkanContext::context->graphicsQueueFamilyIndex), "Failed to create single time commandPool!");
 
 	guiRenderer = new GUIRenderer();
 	gui::DemoScreen();
@@ -116,7 +116,7 @@ S3D_API void s3DTerminateRenderEngine()
 	delete guiRenderer;
 	delete graphicsFamilyCommandPoolST;
 	delete MemoryManager::manager;
-	delete RenderPlatform::platform;
+	delete VulkanContext::context;
 }
 
 S3D_API void s3DExceptionHandle(const char* exceptionMessage)

@@ -1,4 +1,4 @@
-#include "..\RenderPlatform.hpp"
+#include "..\VulkanContext.hpp"
 #include "SwapchainObject.hpp"
 #include <stdexcept>
 #include <vector>
@@ -31,7 +31,7 @@ struct SwapChainSupportDetails
 
 SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, uint32_t image_count)
 {
-	SwapChainSupportDetails details(RenderPlatform::platform->physicalDevice, RenderPlatform::platform->surface);
+	SwapChainSupportDetails details(VulkanContext::context->physicalDevice, VulkanContext::context->surface);
 
 	uint32_t surfaceFormatIndex = 0;
 	for (; surfaceFormatIndex < details.formats.size(); surfaceFormatIndex++)
@@ -52,7 +52,7 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	if (details.capabilities.currentExtent.width == UINT32_MAX)
 	{
 		int width, height;
-		glfwGetFramebufferSize(RenderPlatform::platform->window, &width, &height);
+		glfwGetFramebufferSize(vulkanGraphicsContext.window, &width, &height);
 
 		details.capabilities.currentExtent.width = clamp(width, details.capabilities.minImageExtent.width, details.capabilities.maxImageExtent.width);
 		details.capabilities.currentExtent.height = clamp(height, details.capabilities.minImageExtent.height, details.capabilities.maxImageExtent.height);
@@ -66,7 +66,7 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	VkSwapchainCreateInfoKHR swapchainInfo{};
 	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchainInfo.pNext = nullptr;
-	swapchainInfo.surface = RenderPlatform::platform->surface;
+	swapchainInfo.surface = VulkanContext::context->surface;
 	swapchainInfo.minImageCount = imageCount;
 	swapchainInfo.imageFormat = details.formats[surfaceFormatIndex].format;
 	swapchainInfo.imageColorSpace = details.formats[surfaceFormatIndex].colorSpace;
@@ -74,11 +74,11 @@ SwapchainObject::SwapchainObject(VkSurfaceFormatKHR surfaceFormat, VkPresentMode
 	swapchainInfo.imageArrayLayers = 1;
 	swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	if (RenderPlatform::platform->graphicsQueueFamilyIndex == RenderPlatform::platform->presentQueueFamilyIndex)
+	if (VulkanContext::context->graphicsQueueFamilyIndex == VulkanContext::context->presentQueueFamilyIndex)
 		swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	else
 	{
-		uint32_t queueFamilIndices[2] = { RenderPlatform::platform->graphicsQueueFamilyIndex, RenderPlatform::platform->presentQueueFamilyIndex };
+		uint32_t queueFamilIndices[2] = { VulkanContext::context->graphicsQueueFamilyIndex, VulkanContext::context->presentQueueFamilyIndex };
 
 		swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapchainInfo.queueFamilyIndexCount = 2;

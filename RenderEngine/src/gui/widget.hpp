@@ -15,13 +15,6 @@ namespace widget
             DrawCharFromFontImage(position, text[i], screenPosition.x, glm::vec2(fontSize, fontSize), color);
     }
 
-	inline void DrawSurface(const glm::vec2& screenPositon, const glm::vec2& extent, const glm::vec3& color, bool isBordered, bool canPlaceOn = false) 
-	{
-        if (isBordered) 
-            DrawBox(screenPositon, extent + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
-        DrawBox(isBordered ? screenPositon + glm::vec2(1.0f, 1.0f) : screenPositon, extent, color, canPlaceOn);
-	};
-
     template<std::size_t N>
     constexpr glm::vec2 GetTextExtent(const char(&text)[N], float fontSize = 2.0f)
     {

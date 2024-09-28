@@ -161,7 +161,7 @@
     <ClInclude Include="src\FileIO.hpp" />
     <ClInclude Include="src\gui\widget.hpp" />
     <ClInclude Include="src\macro.hpp" />
-    <ClInclude Include="src\RenderPlatform.hpp" />
+    <ClInclude Include="src\VulkanContext.hpp" />
     <ClInclude Include="src\Vertex.hpp" />
     <ClInclude Include="src\wrapper\CommandBufferObject.hpp" />
     <ClInclude Include="src\wrapper\Memory.hpp" />
@@ -174,7 +174,7 @@
     <ClCompile Include="src\gui\guiRenderer.cpp" />
     <ClCompile Include="src\FileIO.cpp" />
     <ClCompile Include="src\gui\widget.cpp" />
-    <ClCompile Include="src\RenderPlatform.cpp" />
+    <ClCompile Include="src\VulkanContext.cpp" />
     <ClCompile Include="src\Vertex.cpp" />
     <ClCompile Include="src\wrapper\CommandBufferObject.cpp" />
     <ClCompile Include="src\wrapper\Memory.cpp" />

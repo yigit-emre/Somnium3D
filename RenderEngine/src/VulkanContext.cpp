@@ -1,20 +1,25 @@
-#include "RenderPlatform.hpp"
+#include "VulkanContext.hpp"
 #include <stdexcept>
 #include <vector>
 
 #define LOCAL_GTX_16050_TI
 
-RenderPlatform::~RenderPlatform()
+VulkanGrapchicsContext vulkanGraphicsContext;
+
+VulkanContext::~VulkanContext()
 {
-	vkDestroyDevice(device, nullptr);
+	vkDestroyDevice(DEVICE, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(vulkanGraphicsContext.window);
 	glfwTerminate();
 }
 
-RenderPlatform::RenderPlatform(const RenderPlatformInfo& info, bool manuelSelection) : windowWidth(info.windowWidth), windowHeight(info.windowHeight)
+VulkanContext::VulkanContext(const PlatformContextInfo& info, bool manuelSelection)
 {
+	vulkanGraphicsContext.windowWidth = info.windowWidth;
+	vulkanGraphicsContext.windowHeight = info.windowHeight;
+
 	InitLibs(info.windowName);
 	SelectPhysicalDevice(manuelSelection, info);
 	CreateLogicalDevice(info);
@@ -25,7 +30,7 @@ RenderPlatform::RenderPlatform(const RenderPlatformInfo& info, bool manuelSelect
 	minMappedMemoryAlignmentLimit = physicalDeviceProperties.limits.minMemoryMapAlignment;
 }
 
-void RenderPlatform::InitLibs(const char* windowName)
+void VulkanContext::InitLibs(const char* windowName)
 {
 	if (!glfwInit())
 		throw std::runtime_error("Failed to init glfw!");
@@ -33,18 +38,18 @@ void RenderPlatform::InitLibs(const char* windowName)
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	if (windowWidth == 0 || windowHeight== 0) {
+	if (vulkanGraphicsContext.windowWidth == 0 || vulkanGraphicsContext.windowHeight== 0) {
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-		window = glfwCreateWindow(mode->width, mode->height, windowName, monitor, nullptr);
+		vulkanGraphicsContext.window = glfwCreateWindow(mode->width, mode->height, windowName, monitor, nullptr);
 
-		windowWidth = mode->width;
-		windowWidth = mode->height;
+		vulkanGraphicsContext.windowWidth = mode->width;
+		vulkanGraphicsContext.windowWidth = mode->height;
 	}
 	else
-		window = glfwCreateWindow(windowWidth, windowHeight, windowName, nullptr, nullptr);
+		vulkanGraphicsContext.window = glfwCreateWindow(vulkanGraphicsContext.windowWidth, vulkanGraphicsContext.windowHeight, windowName, nullptr, nullptr);
 
-	if (!window)
+	if (!vulkanGraphicsContext.window)
 		throw std::runtime_error("Invalid glfw window handle!");
 
 #if _DEBUG
@@ -101,11 +106,11 @@ void RenderPlatform::InitLibs(const char* windowName)
 		throw std::runtime_error("Failed to create vulkan instance!");
 
 	//Window Surface Creation
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+	if (glfwCreateWindowSurface(instance, vulkanGraphicsContext.window, nullptr, &surface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
 }
 
-bool RenderPlatform::IsDeviceSuitable(VkPhysicalDevice physDevice, const RenderPlatformInfo& info)
+bool VulkanContext::IsDeviceSuitable(VkPhysicalDevice physDevice, const PlatformContextInfo& info)
 {
 	//querying QueueFamilies
 	uint32_t enumeraterCount;
@@ -166,7 +171,7 @@ bool RenderPlatform::IsDeviceSuitable(VkPhysicalDevice physDevice, const RenderP
 	return false;
 }
 
-void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlatformInfo& info)
+void VulkanContext::SelectPhysicalDevice(bool manuelSelection, const PlatformContextInfo& info)
 {
 	uint32_t physicalDeviceCount;
 	if (vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr) != VK_SUCCESS)
@@ -219,7 +224,7 @@ void RenderPlatform::SelectPhysicalDevice(bool manuelSelection, const RenderPlat
 	}
 }
 
-void RenderPlatform::CreateLogicalDevice(const RenderPlatformInfo& info)
+void VulkanContext::CreateLogicalDevice(const PlatformContextInfo& info)
 {
 	uint32_t queueFamilyIndices[2] = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
 	uint32_t uniqueQueueFamilyCount = (graphicsQueueFamilyIndex == presentQueueFamilyIndex) ? 1 : 2;
@@ -252,9 +257,9 @@ void RenderPlatform::CreateLogicalDevice(const RenderPlatformInfo& info)
 	deviceCreateInfo.ppEnabledLayerNames = nullptr;
 #endif _DEBUG
 
-	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS)
+	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &vulkanGraphicsContext.device) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create logical device!");
 
-	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue);
+	vkGetDeviceQueue(DEVICE, graphicsQueueFamilyIndex, 0, &vulkanGraphicsContext.graphicsQueue);
+	vkGetDeviceQueue(DEVICE, presentQueueFamilyIndex, 0, &vulkanGraphicsContext.presentQueue);
 }
