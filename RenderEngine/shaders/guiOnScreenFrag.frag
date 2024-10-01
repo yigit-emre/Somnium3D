@@ -9,9 +9,12 @@ layout(binding = 1) uniform sampler2D textureSampler;
 
 void main() 
 {
-	vec4 offScreenColor = subpassLoad(offScreenInput);
-	if(offScreenColor.a == 0)
-		FragColor = vec4(color, texture(textureSampler, texCoord).r);
-	else
-		FragColor = offScreenColor;
+	vec4 onScreenColor = vec4(color, texture(textureSampler, texCoord).r);
+	if(onScreenColor.a == 1)
+		FragColor = onScreenColor;
+	else 
+	{
+		vec4 offScreenColor = subpassLoad(offScreenInput);
+		FragColor = vec4(onScreenColor.rgb, 1.0) * (1.0 - offScreenColor.a) + offScreenColor * offScreenColor.a;
+	}
 }

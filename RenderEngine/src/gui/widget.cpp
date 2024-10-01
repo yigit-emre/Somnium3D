@@ -11,9 +11,9 @@ extern guiVertex::CharFontInfo* pFontImageDecoder;
 extern float mouseX;
 extern float mouseY;
 
-void widget::DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank)
+void widget::DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isTransparent)
 {
-	const glm::vec2 texCoord = isBlank ? glm::vec2(0.0f, 0.0f) : glm::vec2(71.0f / 72.0f, 63.0f / 64.0f);
+	const glm::vec2 texCoord = isTransparent ? glm::vec2(0.0f, 0.0f) : glm::vec2(71.0f / 72.0f, 63.0f / 64.0f);
 
 	pGUIVertexMemory->position = screenPosition;
 	pGUIVertexMemory->texCoord = texCoord;
@@ -73,13 +73,13 @@ void widget::DrawCharFromFontImage(glm::vec2& screenPosition, int character, con
 	guiIndexer += 4ui32;
 }
 
-bool widget::DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding)
+bool widget::DrawClickableBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec2& borderPadding)
 {
-	if (position.x <= mouseX && mouseX <= position.x + extent.x && position.y <= mouseY && mouseY <= position.y + extent.y)
+	if (screenPosition.x <= mouseX && mouseX <= screenPosition.x + extent.x && screenPosition.y <= mouseY && mouseY <= screenPosition.y + extent.y)
 	{
 		const bool result = glfwGetMouseButton(vulkanGraphicsContext.window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-		DrawBox(position - borderPadding - glm::vec2(1.0f, 1.0f), extent + borderPadding * 2.0f + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
-		DrawBox(position - borderPadding, extent + borderPadding * 2.0f, result ? glm::vec3(0.1f, 0.1f, 0.1f) : glm::vec3(0.2f, 0.2f, 0.2f), false);
+		DrawBox(screenPosition - borderPadding - glm::vec2(1.0f, 1.0f), extent + borderPadding * 2.0f + glm::vec2(2.0f, 2.0f), glm::vec3(1.0f, 1.0f, 1.0f), false);
+		DrawBox(screenPosition - borderPadding, extent + borderPadding * 2.0f, result ? glm::vec3(0.1f, 0.1f, 0.1f) : glm::vec3(0.2f, 0.2f, 0.2f), true);
 		return result;
 	}
 	return false;

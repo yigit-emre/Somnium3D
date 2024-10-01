@@ -4,8 +4,8 @@
 
 namespace widget
 {
-    void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isBlank);
-    bool DrawClickableBox(const glm::vec2& position, const glm::vec2& extent, const glm::vec2& borderPadding = { 2.0f, 2.0f });
+    void DrawBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec3& color, bool isTransparent);
+    bool DrawClickableBox(const glm::vec2& screenPosition, const glm::vec2& extent, const glm::vec2& borderPadding = { 2.0f, 2.0f });
     void DrawCharFromFontImage(glm::vec2& screenPosition, int character, const float startPosX, const glm::vec2& extent, const glm::vec3& color);
 
     inline void DrawText(const glm::vec2& screenPosition, const char* text, float fontSize, const glm::vec3& color)
@@ -14,9 +14,12 @@ namespace widget
         for (uint32_t i = 0; text[i] != 0; i++)
             DrawCharFromFontImage(position, text[i], screenPosition.x, glm::vec2(fontSize, fontSize), color);
     }
+}
 
+namespace widgetTool
+{
     template<std::size_t N>
-    constexpr glm::vec2 GetTextExtent(const char(&text)[N], float fontSize = 2.0f)
+    consteval glm::vec2 GetTextExtent(const char(&text)[N], float fontSize = 2.0f)
     {
         float width = 0.0f, height = 8.0f * fontSize, maxWidth = 0.0f;
         for (std::size_t i = 0; i < N - 1; ++i)
@@ -51,26 +54,5 @@ namespace widget
             }
         }
         return glm::vec2((maxWidth < width) ? width : maxWidth, height);
-    }
-}
-
-namespace guiTool
-{
-    struct ClickBoxQueueItem
-    {
-        const glm::vec2 position;
-        const glm::vec2 extent;
-        const uint32_t enumValue;
-    };
-
-    template<std::size_t N>
-    inline const uint32_t QueryClickBoxes(const ClickBoxQueueItem(&queue)[N]) 
-    {
-        for (uint32_t i = 0U; i < N; i++) 
-        {
-            if (widget::DrawClickableBox(queue[i].position, queue[i].extent))
-                return queue[i].enumValue;
-        }
-        return 0U;
     }
 }

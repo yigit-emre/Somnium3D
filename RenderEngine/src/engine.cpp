@@ -23,32 +23,44 @@ namespace gui
 {
 	enum GUIEnums : uint32_t
 	{
-		GUI_ENUM_NULL,
-		GUI_ENUM_SELECTION_MENU1,
-		GUI_ENUM_SELECTION_MENU2,
-		GUI_ENUM_SELECTION_MENU3,
-		GUI_ENUM_SELECTION_MENU4
+		GUI_ENUM_SELECTION_NULL,
+		GUI_ENUM_SELECTION_MENUBAR_PROJECT,
 	};
 
 	static void DemoScreen()
 	{
-		bool offScreenState = true;
-		GUIEnums guiEnums = GUI_ENUM_NULL;
-		static constexpr const guiTool::ClickBoxQueueItem clickBoxQueue[] = { 
-			{glm::vec2(76.0f,  10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU1},
-			{glm::vec2(156.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU2},
-			{glm::vec2(236.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU3},
-			{glm::vec2(326.0f, 10.f), glm::vec2(60.0f, 16.0f), GUI_ENUM_SELECTION_MENU4}
-		};
-
+		//constexpr glm::vec2 extent = widgetTool::GetTextExtent("Project", 2.0f);
+		VkBool32 offScreenState = VK_TRUE;
+		GUIEnums guiEnums = GUI_ENUM_SELECTION_NULL;
 		while (!glfwWindowShouldClose(vulkanGraphicsContext.window))
 		{
 			glfwPollEvents();
-			guiRenderer->BeginRender();
-			widget::DrawBox(glm::vec2(0.0f, 0.0f), glm::vec2(static_cast<float>(vulkanGraphicsContext.windowWidth), static_cast<float>(vulkanGraphicsContext.windowHeight)), glm::vec3(0.05f, 0.05f, 0.05f), false);
 
-			if (guiEnums = static_cast<GUIEnums>(guiTool::QueryClickBoxes(clickBoxQueue))) 
-				offScreenState = true;
+			if (glfwGetMouseButton(vulkanGraphicsContext.window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+				guiEnums = GUI_ENUM_SELECTION_NULL;
+
+			guiRenderer->BeginRender();
+			widget::DrawBox(glm::vec2(0.0f, 0.0f), glm::vec2(static_cast<float>(vulkanGraphicsContext.windowWidth), static_cast<float>(vulkanGraphicsContext.windowHeight)), glm::vec3(0.01f, 0.01f, 0.01f), true);
+
+			if (widget::DrawClickableBox(glm::vec2(76.0f, 10.f), glm::vec2(80.0f, 16.0f)))
+				guiEnums = GUI_ENUM_SELECTION_MENUBAR_PROJECT;
+
+			switch (guiEnums)
+			{
+			case gui::GUI_ENUM_SELECTION_MENUBAR_PROJECT:
+				//widget::DrawBox(glm::vec2(76.0f, 10.f), glm::vec2(80.0f, 16.0f), glm::vec3(0.1f, 0.1f, 0.1f), false);
+				//widget::DrawBox(glm::vec2(76.0f, 26.0f), glm::vec2(160.0f, 130.0f), glm::vec3(0.05f, 0.05f, 0.05f), false);
+				widget::DrawText(glm::vec2(76.0f, 40.0f), "New Project", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+				/*if (widget::DrawClickableBox(glm::vec2(76.0f, 10.f), widgetTool::GetTextExtent("New Project", 2.0f)))
+				{
+
+				}*/
+				break;
+			default:
+				break;
+			}
+
+			
 
 			guiRenderer->ActiveStaticState();
 
@@ -56,27 +68,17 @@ namespace gui
 			{
 				switch (guiEnums)
 				{
-				case GUI_ENUM_SELECTION_MENU1:
+				case GUI_ENUM_SELECTION_MENUBAR_PROJECT:
+
 					break;
 
-				case GUI_ENUM_SELECTION_MENU2:
-					break;
-
-				case GUI_ENUM_SELECTION_MENU3:
-					break;
-
-				case GUI_ENUM_SELECTION_MENU4:
-					break;
-
-				default:
+				default: 
 					widget::DrawText(glm::vec2(10.0f, 10.0f), "s3D", 2.0f, glm::vec3(1.0f, 100.0f / 255.0f, 0.0f));
-					widget::DrawText(glm::vec2(76.0f, 10.0f), "Menu1", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(156.0f, 10.0f), "Menu2", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(236.0f, 10.0f), "Menu3", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-					widget::DrawText(glm::vec2(326.0f, 10.0f), "Menu4", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawText(glm::vec2(76.0f, 10.0f), "Project", 2.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+					widget::DrawBox(glm::vec2(10.0f, 30.0f), glm::vec2(vulkanGraphicsContext.windowWidth - 20.0f, 2.0f), glm::vec3(1.0f, 0.2f, 0.2f), false);
 					break;
 				}
-				offScreenState = false;
+				offScreenState = VK_FALSE;
 			}
 
 			guiRenderer->EndRender();
